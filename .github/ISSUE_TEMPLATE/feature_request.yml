@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an idea or improvement for env-kit-headless
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for suggesting an improvement!
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use-case
+      description: What problem are you trying to solve? What's the use-case?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the solution or behaviour you'd like to see.
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/laranail/env-kit-headless/discussions
+    about: Ask questions and discuss ideas with the community.
+  - name: Documentation
+    url: https://opensource.simtabi.com/env-kit-headless/docs/
+    about: Read the docs before opening an issue.
