@@ -87,6 +87,10 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 Console\KeysCommand::class,
                 Console\ListCommand::class,
                 Console\RenameKeyCommand::class,
+                Console\BackupCommand::class,
+                Console\BackupsListCommand::class,
+                Console\RestoreCommand::class,
+                Console\ValidateCommand::class,
             ]);
         }
     }

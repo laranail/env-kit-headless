@@ -35,6 +35,9 @@ use Simtabi\Laranail\EnvKit\Headless\Testing\EnvKitFake;
  * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit save()
  * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit allowProduction()
  * @method static \Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager backups()
+ * @method static \Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile|null backup()
+ * @method static \Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile restore(string $name)
+ * @method static string path()
  * @method static \Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator configure()
  *
  * @see \Simtabi\Laranail\EnvKit\Headless\EnvKit

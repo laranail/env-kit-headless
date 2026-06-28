@@ -68,6 +68,18 @@ final class BackupManager
         return $this->all()[0] ?? null;
     }
 
+    /** Locate a backup by its file name. */
+    public function find(string $name): ?BackupFile
+    {
+        foreach ($this->all() as $backup) {
+            if ($backup->name === $name) {
+                return $backup;
+            }
+        }
+
+        return null;
+    }
+
     public function prune(): void
     {
         if ($this->retain <= 0) {

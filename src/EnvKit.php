@@ -8,11 +8,13 @@ use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Traits\Macroable;
+use Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile;
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\BackupNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Audit;
@@ -22,6 +24,7 @@ use Simtabi\Laranail\EnvKit\Headless\Security\SecretRedactor;
 use Simtabi\Laranail\EnvKit\Headless\Session\EditSession;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
+use Simtabi\Laranail\EnvKit\Headless\Writer\AtomicEnvWriter;
 
 /**
  * The bound root service — the single instance the `EnvKit` facade, constructor
@@ -251,6 +254,43 @@ final class EnvKit implements EnvKitInterface
     public function backups(): BackupManager
     {
         return $this->backups;
+    }
+
+    /** The .env path this instance operates on. */
+    public function path(): string
+    {
+        return $this->path;
+    }
+
+    /** Snapshot the current file. Returns null when there is nothing to back up. */
+    public function backup(): ?BackupFile
+    {
+        return $this->backups->backup($this->path);
+    }
+
+    /** Restore a named backup over the current file (production-guarded, safety-backed-up). */
+    public function restore(string $name): BackupFile
+    {
+        $backup = $this->backups->find($name);
+        if ($backup === null) {
+            throw BackupNotFoundException::named($name);
+        }
+
+        (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
+
+        if ($this->autoBackup && is_file($this->path)) {
+            $this->backups->backup($this->path);
+        }
+
+        $contents = @file_get_contents($backup->path);
+        if ($contents === false) {
+            throw BackupNotFoundException::named($name);
+        }
+
+        ($this->configurator->writer() ?? new AtomicEnvWriter)->write($this->path, $contents);
+        $this->allowProduction = false;
+
+        return $backup;
     }
 
     /** A new EnvKit bound to a different .env file (same config). */

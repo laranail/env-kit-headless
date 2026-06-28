@@ -16,7 +16,8 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   - [x] slice 2b — CommitPipeline (validate→guard→backup→write→verify) + BackupManager, wired into EditSession.
   - [x] slice 4 — root EnvKit service + facade + helper + service provider (programmatic API).
   - [x] slice 5 — CLI commands (set/get/unset/keys/list/rename) + namespaced names & env:* aliases.
-  - [ ] slice 5b — CLI backup/restore/validate/diff/doctor/etc.
+  - [x] slice 5b — CLI backup/backups/restore/validate (+ EnvKit backup()/restore()/path(), BackupManager find()).
+  - [ ] slice 5c — CLI diff/doctor/import/export.
   - [x] slice 7a — runtime extensibility: EnvKitConfigurator (configure() DSL) + Macroable on EnvKit.
   - [x] slice 7b — audit sinks (file/null) + AfterWrite event, wired into the commit pipeline (redacted).
   - [x] slice 7c-i — EnvKit::fake() test seam (in-memory EnvKitFake + assertions).
@@ -122,3 +123,9 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   in-memory, records writes, never touches disk) + `EnvKit::fake()` on the facade (swaps the binding).
   Assertions: `assertSet`/`assertForgotten`/`assertNothingChanged`. **126 tests** incl. in-memory
   read/record, no-disk-I/O-when-faked, and DI/`env_kit()` resolving the fake. L9 + Pint clean.
+- **Slice 5b (CLI backup family + validate) green:** `Console/{Backup,BackupsList,Restore,Validate}Command`
+  (+ `env:backup`/`env:backups`/`env:restore`/`env:validate`); `EnvKit::backup()`/`restore()`/`path()`
+  convenience + `BackupManager::find()` + `BackupNotFoundException`. Restore is production-guarded and
+  safety-backs-up first; validate runs every key through `KeyValidator` + every value through
+  `ValueSanitizer::isClean`. **132 tests** incl. backup/list/restore round-trip, restore-with-no-backups
+  (exit 3), clean validate, unsafe-value validate (exit 3). L9 + Pint clean.
