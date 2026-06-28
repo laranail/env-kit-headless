@@ -64,6 +64,9 @@
         }
     },
     "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        },
         "laravel": {
             "providers": [
                 "Simtabi\\Laranail\\EnvKit\\Headless\\EnvKitServiceProvider"
