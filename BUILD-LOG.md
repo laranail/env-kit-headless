@@ -22,7 +22,7 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   - [x] slice 7b — audit sinks (file/null) + AfterWrite event, wired into the commit pipeline (redacted).
   - [x] slice 7c-i — EnvKit::fake() test seam (in-memory EnvKitFake + assertions).
   - [ ] slice 7c-ii — encryption-at-rest · EnvKitManager driver registry.
-  - [ ] slice 6 — TUI.
+  - [x] slice 6 — interactive TUI (env:edit) on laravel/prompts.
 - [ ] **Phase 6 — docs** — README + docs/ set incl. `extending.md`.
 - [ ] **Phase 7 — release** — only after explicit approval.
 
@@ -129,3 +129,9 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   safety-backs-up first; validate runs every key through `KeyValidator` + every value through
   `ValueSanitizer::isClean`. **132 tests** incl. backup/list/restore round-trip, restore-with-no-backups
   (exit 3), clean validate, unsafe-value validate (exit 3). L9 + Pint clean.
+- **Slice 6 (interactive TUI) green:** `Console/EditCommand` (`env:edit`) — a browse/edit loop on
+  laravel/prompts (`select`/`text`/`confirm`, the UI layer of laranail/console). Pure orchestration over
+  the engine (edit value / add / rename / delete-with-confirm); engine errors surface inline without
+  breaking the loop; production banner. Tested with `expectsQuestion`/`expectsConfirmation` (Laravel
+  routes prompts to the Symfony fallback under `runningUnitTests()`). **137 tests** incl. quit, edit,
+  add, delete, and error-without-crash. L9 + Pint clean.
