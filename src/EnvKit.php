@@ -12,9 +12,11 @@ use Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile;
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\ValueCipherInterface;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\BackupNotFoundException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Audit;
@@ -291,6 +293,52 @@ final class EnvKit implements EnvKitInterface
         $this->allowProduction = false;
 
         return $backup;
+    }
+
+    // --- Encryption-at-rest (per value; never Laravel's whole-file env:encrypt) --
+
+    /** Encrypt an existing key's value in place (no-op if absent or already encrypted). */
+    public function encrypt(string $key): static
+    {
+        return $this->mutate(function (EditSession $s) use ($key): void {
+            $value = $this->document()->get($key);
+            if ($value !== null && ! $this->cipher()->isEncrypted($value)) {
+                $s->set($key, $this->cipher()->encrypt($value));
+            }
+        });
+    }
+
+    /** Decrypt an existing key's value in place (no-op if absent or not encrypted). */
+    public function decrypt(string $key): static
+    {
+        return $this->mutate(function (EditSession $s) use ($key): void {
+            $value = $this->document()->get($key);
+            if ($value !== null && $this->cipher()->isEncrypted($value)) {
+                $s->set($key, $this->cipher()->decrypt($value));
+            }
+        });
+    }
+
+    /** Set a key to the encrypted form of a plaintext value. */
+    public function setEncrypted(string $key, string $value): static
+    {
+        return $this->mutate(fn (EditSession $s) => $s->set($key, $this->cipher()->encrypt($value)));
+    }
+
+    /** Read a key, decrypting it when stored encrypted. */
+    public function getDecrypted(string $key, ?string $default = null): ?string
+    {
+        $value = $this->document()->get($key);
+        if ($value === null) {
+            return $default;
+        }
+
+        return $this->cipher()->isEncrypted($value) ? $this->cipher()->decrypt($value) : $value;
+    }
+
+    private function cipher(): ValueCipherInterface
+    {
+        return $this->configurator->cipher() ?? throw EncryptionException::notConfigured();
     }
 
     /** A new EnvKit bound to a different .env file (same config). */

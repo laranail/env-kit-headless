@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Simtabi\Laranail\EnvKit\Headless\Extension;
 
+use Closure;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\ValueCipherInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\WriterInterface;
 use Simtabi\Laranail\EnvKit\Headless\EnvKit;
 
@@ -27,6 +29,11 @@ final class EnvKitConfigurator
 
     /** @var list<AuditSinkInterface> */
     private array $auditSinks = [];
+
+    private ?ValueCipherInterface $cipher = null;
+
+    /** @var (Closure(): ValueCipherInterface)|null */
+    private $cipherResolver = null;
 
     /** Append a pipe to the commit pipeline (runs after the built-in guards, before write). */
     public function pushMutationMiddleware(object $pipe): self
@@ -60,6 +67,40 @@ final class EnvKitConfigurator
         $this->auditSinks[] = $sink;
 
         return $this;
+    }
+
+    /** Swap the value cipher used for encrypt()/decrypt() (e.g. a Vault-backed one). */
+    public function useCipher(ValueCipherInterface $cipher): self
+    {
+        $this->cipher = $cipher;
+
+        return $this;
+    }
+
+    /**
+     * Provider-seeded: lazily resolve the default cipher so the Encrypter (and its
+     * APP_KEY) is only touched when encryption is actually used.
+     *
+     * @param  Closure(): ValueCipherInterface  $resolver
+     */
+    public function resolveCipherUsing(Closure $resolver): self
+    {
+        $this->cipherResolver = $resolver;
+
+        return $this;
+    }
+
+    public function cipher(): ?ValueCipherInterface
+    {
+        if ($this->cipher !== null) {
+            return $this->cipher;
+        }
+
+        if ($this->cipherResolver !== null) {
+            return $this->cipher = ($this->cipherResolver)();
+        }
+
+        return null;
     }
 
     /** Add a fluent method to EnvKit without subclassing (Macroable). */

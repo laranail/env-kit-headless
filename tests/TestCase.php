@@ -24,6 +24,12 @@ abstract class TestCase extends Orchestra
         return ['EnvKit' => EnvKit::class];
     }
 
+    /** A fixed AES-256-CBC key so the encryption cipher resolves in tests. */
+    protected function defineEnvironment($app): void
+    {
+        $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
+    }
+
     /**
      * Point EnvKit at a fresh temp .env with the given contents, then rebind so
      * both the container and the facade pick up the new config.

@@ -31,6 +31,9 @@ final class EnvKitServiceProvider extends PackageServiceProvider
         // their own provider) and every per-request EnvKit reads that config.
         $this->app->singleton(EnvKitConfigurator::class);
 
+        // The cipher driver registry (named drivers + extend()).
+        $this->app->singleton(EnvKitManager::class);
+
         // Bound `scoped` (resets per request) so the optional pending-session state
         // never leaks between requests on Octane. Config is read lazily at resolve
         // time, so it is always merged by then.
@@ -79,6 +82,12 @@ final class EnvKitServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        // Seed the default cipher lazily so the Encrypter (and APP_KEY) is only
+        // touched when encryption is actually used.
+        $this->app->make(EnvKitConfigurator::class)->resolveCipherUsing(
+            fn () => $this->app->make(EnvKitManager::class)->cipher(),
+        );
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 Console\SetKeyCommand::class,

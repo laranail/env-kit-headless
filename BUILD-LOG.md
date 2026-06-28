@@ -21,7 +21,7 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   - [x] slice 7a — runtime extensibility: EnvKitConfigurator (configure() DSL) + Macroable on EnvKit.
   - [x] slice 7b — audit sinks (file/null) + AfterWrite event, wired into the commit pipeline (redacted).
   - [x] slice 7c-i — EnvKit::fake() test seam (in-memory EnvKitFake + assertions).
-  - [ ] slice 7c-ii — encryption-at-rest · EnvKitManager driver registry.
+  - [x] slice 7c-ii — encryption-at-rest (per-value cipher) + EnvKitManager driver registry.
   - [x] slice 6 — interactive TUI (env:edit) on laravel/prompts.
 - [ ] **Phase 6 — docs** — README + docs/ set incl. `extending.md`.
 - [ ] **Phase 7 — release** — only after explicit approval.
@@ -135,3 +135,10 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   breaking the loop; production banner. Tested with `expectsQuestion`/`expectsConfirmation` (Laravel
   routes prompts to the Symfony fallback under `runningUnitTests()`). **137 tests** incl. quit, edit,
   add, delete, and error-without-crash. L9 + Pint clean.
+- **Slice 7c-ii (encryption + manager) green:** `Contracts/ValueCipherInterface` + `Security/LaravelValueCipher`
+  (APP_KEY Encrypter, `envkit:` marker; **per-value**, never re-binds Laravel's whole-file `env:encrypt`)
+  + `EnvKitManager` (Illuminate\Support\Manager cipher driver registry, `laravel` default + `extend()`).
+  `EnvKit::encrypt()/decrypt()/setEncrypted()/getDecrypted()`; cipher resolved lazily via the configurator
+  (`resolveCipherUsing`) so APP_KEY is only touched on use; consumers override with `configure()->useCipher()`.
+  **141 tests** incl. at-rest round-trip (asserts plaintext absent), `setEncrypted`, manager `extend()`,
+  and a custom configurator cipher. L9 + Pint clean.

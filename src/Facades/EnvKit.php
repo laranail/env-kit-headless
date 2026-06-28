@@ -38,6 +38,10 @@ use Simtabi\Laranail\EnvKit\Headless\Testing\EnvKitFake;
  * @method static \Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile|null backup()
  * @method static \Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile restore(string $name)
  * @method static string path()
+ * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit encrypt(string $key)
+ * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit decrypt(string $key)
+ * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit setEncrypted(string $key, string $value)
+ * @method static string|null getDecrypted(string $key, ?string $default = null)
  * @method static \Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator configure()
  *
  * @see \Simtabi\Laranail\EnvKit\Headless\EnvKit

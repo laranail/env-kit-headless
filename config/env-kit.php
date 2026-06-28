@@ -36,6 +36,12 @@ return [
         'path' => storage_path('env-kit/audit.log'), // JSON-lines (file sink, the default)
     ],
 
-    // schema / encryption settings land in later slices.
+    // Per-value encryption-at-rest. The `laravel` driver uses the APP_KEY
+    // Encrypter; register your own via EnvKitManager::extend('driver', fn () => …).
+    'encryption' => [
+        'driver' => 'laravel',
+    ],
+
+    // schema settings land in a later slice.
 
 ];
