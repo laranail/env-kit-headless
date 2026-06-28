@@ -6,6 +6,7 @@ namespace Simtabi\Laranail\EnvKit\Headless;
 
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
+use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
 use Simtabi\Laranail\Package\Tools\Package;
@@ -22,6 +23,10 @@ final class EnvKitServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
+        // The configurator is a singleton: consumers reshape EnvKit once (from
+        // their own provider) and every per-request EnvKit reads that config.
+        $this->app->singleton(EnvKitConfigurator::class);
+
         // Bound `scoped` (resets per request) so the optional pending-session state
         // never leaks between requests on Octane. Config is read lazily at resolve
         // time, so it is always merged by then.
@@ -51,6 +56,7 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 ),
                 typed: new TypedAccessor,
                 interpolator: new Interpolator(throwOnUndefined: $throwOnUndefined),
+                configurator: $app->make(EnvKitConfigurator::class),
             );
         });
 

@@ -6,10 +6,12 @@ namespace Simtabi\Laranail\EnvKit\Headless;
 
 use Closure;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Traits\Macroable;
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProductionGuard;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
@@ -28,6 +30,8 @@ use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
  */
 final class EnvKit implements EnvKitInterface
 {
+    use Macroable;
+
     private ?EditSession $pending = null;
 
     private bool $allowProduction = false;
@@ -43,7 +47,14 @@ final class EnvKit implements EnvKitInterface
         private readonly BackupManager $backups,
         private readonly TypedAccessor $typed,
         private readonly Interpolator $interpolator,
+        private readonly EnvKitConfigurator $configurator,
     ) {}
+
+    /** The fluent runtime-configuration DSL (Open/Closed; §2A). */
+    public function configure(): EnvKitConfigurator
+    {
+        return $this->configurator;
+    }
 
     // --- Reads (the EnvKitInterface contract) -------------------------------
 
@@ -248,6 +259,7 @@ final class EnvKit implements EnvKitInterface
             $this->backups,
             $this->typed,
             $this->interpolator,
+            $this->configurator,
         );
     }
 
@@ -281,11 +293,18 @@ final class EnvKit implements EnvKitInterface
 
     private function pipeline(): CommitPipeline
     {
-        return CommitPipeline::default(
+        $pipeline = CommitPipeline::default(
+            writer: $this->configurator->writer(),
             backups: $this->autoBackup ? $this->backups : null,
             production: new ProductionGuard($this->isProduction, $this->protectProduction),
-            protected: new ProtectedKeys($this->protectedKeys),
+            protected: new ProtectedKeys([...$this->protectedKeys, ...$this->configurator->protectedKeys()]),
         );
+
+        foreach ($this->configurator->mutationMiddleware() as $pipe) {
+            $pipeline->push($pipe);
+        }
+
+        return $pipeline;
     }
 
     private function mutate(Closure $apply): static

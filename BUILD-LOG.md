@@ -17,7 +17,9 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   - [x] slice 4 — root EnvKit service + facade + helper + service provider (programmatic API).
   - [x] slice 5 — CLI commands (set/get/unset/keys/list/rename) + namespaced names & env:* aliases.
   - [ ] slice 5b — CLI backup/restore/validate/diff/doctor/etc.
-  - [ ] slice 6 — TUI · slice 7 — audit/encryption/extensibility.
+  - [x] slice 7a — runtime extensibility: EnvKitConfigurator (configure() DSL) + Macroable on EnvKit.
+  - [ ] slice 7b — audit sinks + events · slice 7c — encryption · EnvKit::fake() · EnvKitManager.
+  - [ ] slice 6 — TUI.
 - [ ] **Phase 6 — docs** — README + docs/ set incl. `extending.md`.
 - [ ] **Phase 7 — release** — only after explicit approval.
 
@@ -103,3 +105,8 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   (thin wrappers over the same `EnvKit` engine). Registered in `packageBooted()`. **114 tests** incl.
   console tests for both name forms, `KEY=VALUE` shorthand, mixed-form (exit 2), invalid-key (exit 3),
   get-with-default, unset, rename, and `env:list` secret masking (+ `--reveal`). L9 + Pint clean.
+- **Slice 7a (runtime extensibility) green:** `Extension/EnvKitConfigurator` (the `EnvKit::configure()`
+  DSL — `pushMutationMiddleware`/`protectKeys`/`useWriter`/`macro`, bound singleton) + `Macroable` on
+  `EnvKit`; `pipeline()` merges the configurator's middleware/protected-keys/writer each commit. **118
+  tests** incl. a consumer macro, a veto mutation-middleware, extra protected keys, and a custom writer
+  — all applied from "consumer" code with zero source edits (Open/Closed). L9 + Pint clean.

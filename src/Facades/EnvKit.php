@@ -34,6 +34,7 @@ use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
  * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit save()
  * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit allowProduction()
  * @method static \Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager backups()
+ * @method static \Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator configure()
  *
  * @see \Simtabi\Laranail\EnvKit\Headless\EnvKit
  */
