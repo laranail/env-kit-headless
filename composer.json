@@ -22,6 +22,8 @@
     },
     "require": {
         "php": "^8.4.1 || ^8.5",
+        "ext-mbstring": "*",
+        "laranail/console": "^1.0",
         "laranail/package-tools": "^1.0",
         "illuminate/console": "^13.0",
         "illuminate/contracts": "^13.0",
@@ -42,7 +44,7 @@
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.0",
         "rector/rector": "^2.0",
-        "infection/infection": "^0.29"
+        "infection/infection": "^0.33"
     },
     "suggest": {
         "laranail/database-tools": "Enables the database audit sink (publish its migration).",
