@@ -7,6 +7,7 @@ namespace Simtabi\Laranail\EnvKit\Headless\Extension;
 use Closure;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\DoctorRuleInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\PortFormatInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\ValueCipherInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\WriterInterface;
 use Simtabi\Laranail\EnvKit\Headless\EnvKit;
@@ -38,6 +39,9 @@ final class EnvKitConfigurator
 
     /** @var list<DoctorRuleInterface> */
     private array $doctorRules = [];
+
+    /** @var list<PortFormatInterface> */
+    private array $portFormats = [];
 
     /** Append a pipe to the commit pipeline (runs after the built-in guards, before write). */
     public function pushMutationMiddleware(object $pipe): self
@@ -85,6 +89,20 @@ final class EnvKitConfigurator
     public function doctorRules(): array
     {
         return $this->doctorRules;
+    }
+
+    /** Register a custom import/export format (e.g. YAML). */
+    public function registerPortFormat(PortFormatInterface $format): self
+    {
+        $this->portFormats[] = $format;
+
+        return $this;
+    }
+
+    /** @return list<PortFormatInterface> */
+    public function portFormats(): array
+    {
+        return $this->portFormats;
     }
 
     /** Swap the value cipher used for encrypt()/decrypt() (e.g. a Vault-backed one). */

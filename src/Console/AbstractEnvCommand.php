@@ -92,4 +92,12 @@ abstract class AbstractEnvCommand extends Command
 
         return is_string($value) ? $value : '';
     }
+
+    /** The --format option, falling back to $default. */
+    protected function formatOption(string $default = 'json'): string
+    {
+        $format = $this->option('format');
+
+        return is_string($format) && $format !== '' ? $format : $default;
+    }
 }

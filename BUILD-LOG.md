@@ -18,7 +18,7 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   - [x] slice 5 — CLI commands (set/get/unset/keys/list/rename) + namespaced names & env:* aliases.
   - [x] slice 5b — CLI backup/backups/restore/validate (+ EnvKit backup()/restore()/path(), BackupManager find()).
   - [x] slice 5c — doctor (extensible rule engine) + diff.
-  - [ ] slice 5d — import/export Porter (JSON/CSV).
+  - [x] slice 5d — import/export Porter (JSON + CSV, extensible) + env:export / env:import.
   - [x] slice 7a — runtime extensibility: EnvKitConfigurator (configure() DSL) + Macroable on EnvKit.
   - [x] slice 7b — audit sinks (file/null) + AfterWrite event, wired into the commit pipeline (redacted).
   - [x] slice 7c-i — EnvKit::fake() test seam (in-memory EnvKitFake + assertions).
@@ -149,3 +149,12 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
   (`env:doctor` exits 3 on any error-severity finding; `env:diff` compares by key). Added
   `EnvDocument::hasTrailingNewline()`. **148 tests** incl. clean doctor, duplicate-keys error, trailing-
   newline warning, custom rule via configure(), structured diff, and identical-files. L9 + Pint clean.
+- **Slice 5d (import/export Porter) green:** `Contracts/PortFormatInterface` + `Porter/Porter` +
+  `Porter/Formats/{JsonFormat,CsvFormat}` (RFC-4180 quoting) + `PortException`; extensible via
+  `configure()->registerPortFormat()`. `EnvKit::export()/import()` (import flows through the commit
+  pipeline → guarded/atomic/audited); `Console/{Export,Import}Command` (`env:export --output`,
+  `env:import`). **156 tests** incl. json export, json/csv round-trips, file export/import, missing-source
+  (exit 2), unknown-format, and a custom configure()-registered format. L9 + Pint clean.
+
+**Headless feature surface complete.** 14 CLI commands; programmatic + CLI + TUI faces; full
+extensibility, audit/events, fake(), encryption, doctor, diff, import/export.

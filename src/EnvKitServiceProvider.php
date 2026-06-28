@@ -103,6 +103,8 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 Console\EditCommand::class,
                 Console\DoctorCommand::class,
                 Console\DiffCommand::class,
+                Console\ExportCommand::class,
+                Console\ImportCommand::class,
             ]);
         }
     }

@@ -22,6 +22,7 @@ use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Audit;
+use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProductionGuard;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\SecretRedactor;
@@ -377,6 +378,31 @@ final class EnvKit implements EnvKitInterface
             'only_there' => array_values(array_diff(array_keys($there), array_keys($here))),
             'changed' => $changed,
         ];
+    }
+
+    // --- Import / export ----------------------------------------------------
+
+    /** Serialize all values in the given format (default json). */
+    public function export(string $format = 'json'): string
+    {
+        return $this->porter()->format($format)->export($this->all());
+    }
+
+    /** Parse $content in the given format and apply every key (one commit). */
+    public function import(string $content, string $format = 'json'): static
+    {
+        $values = $this->porter()->format($format)->import($content);
+
+        return $this->mutate(function (EditSession $s) use ($values): void {
+            foreach ($values as $key => $value) {
+                $s->set($key, $value);
+            }
+        });
+    }
+
+    private function porter(): Porter
+    {
+        return Porter::withDefaults(...$this->configurator->portFormats());
     }
 
     /** A new EnvKit bound to a different .env file (same config). */

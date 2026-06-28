@@ -44,6 +44,8 @@ use Simtabi\Laranail\EnvKit\Headless\Testing\EnvKitFake;
  * @method static string|null getDecrypted(string $key, ?string $default = null)
  * @method static list<\Simtabi\Laranail\EnvKit\Headless\Doctor\Diagnostic> inspect()
  * @method static array{only_here: list<string>, only_there: list<string>, changed: list<string>} diff(string $against)
+ * @method static string export(string $format = 'json')
+ * @method static \Simtabi\Laranail\EnvKit\Headless\EnvKit import(string $content, string $format = 'json')
  * @method static \Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator configure()
  *
  * @see \Simtabi\Laranail\EnvKit\Headless\EnvKit
