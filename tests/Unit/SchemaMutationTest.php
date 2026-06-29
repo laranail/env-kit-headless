@@ -71,3 +71,16 @@ it('define accepts an array of specs and ignores blanks/unknowns', function () {
     expect($schema->validate(['K' => '7'])->passed())->toBeTrue()
         ->and($schema->validate(['K' => 'seven'])->failed())->toBeTrue();
 });
+
+it('stops at the first failing rule for a key (break works)', function () {
+    // integer runs first and fails; the in() rule must NOT also report.
+    $errors = (new EnvSchema)->integer('K')->in('K', ['a'])->validate(['K' => 'zzz'])->errors();
+
+    expect($errors['K'])->toBe(['must be an integer']);
+});
+
+it('keys() lists every keyed rule', function () {
+    $schema = (new EnvSchema)->required('A')->integer('B')->integer('B');
+
+    expect($schema->keys())->toBe(['A', 'B']); // de-duplicated by array key
+});
