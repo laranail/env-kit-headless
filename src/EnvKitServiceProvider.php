@@ -6,13 +6,19 @@ namespace Simtabi\Laranail\EnvKit\Headless;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Support\Facades\Event;
 use Simtabi\Laranail\EnvKit\Headless\Audit\FileAuditSink;
 use Simtabi\Laranail\EnvKit\Headless\Audit\NullAuditSink;
 use Simtabi\Laranail\EnvKit\Headless\Authorization\DefaultUpdateGate;
 use Simtabi\Laranail\EnvKit\Headless\Authorization\LaravelAbilityGate;
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\DoctorRuleInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\PortFormatInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\WriteObserverInterface;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
+use Simtabi\Laranail\EnvKit\Headless\Listeners\SendEnvKitNotification;
 use Simtabi\Laranail\EnvKit\Headless\Security\SecretRedactor;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
@@ -69,6 +75,12 @@ final class EnvKitServiceProvider extends PackageServiceProvider
             $auditEnabled = (bool) ($audit['enabled'] ?? true);
             $auditPath = is_string($audit['path'] ?? null) ? $audit['path'] : (string) $app->storagePath('env-kit/audit.log');
 
+            // Read the value-length cap fresh per resolution (config-accurate at runtime).
+            $limits = is_array($config['limits'] ?? null) ? $config['limits'] : [];
+            $maxValue = $limits['max_value_length'] ?? null;
+            $configurator = $app->make(EnvKitConfigurator::class);
+            $configurator->limitValueLength(is_int($maxValue) ? $maxValue : null);
+
             return new EnvKit(
                 path: (string) ($config['path'] ?? $app->basePath('.env')),
                 autoCommit: (bool) ($config['auto_commit'] ?? true),
@@ -83,7 +95,7 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 ),
                 typed: new TypedAccessor,
                 interpolator: new Interpolator(throwOnUndefined: $throwOnUndefined),
-                configurator: $app->make(EnvKitConfigurator::class),
+                configurator: $configurator,
                 auditSink: $auditEnabled ? new FileAuditSink($auditPath) : new NullAuditSink,
                 redactor: $app->make(SecretRedactor::class),
                 events: $app->make(Dispatcher::class),
@@ -124,6 +136,34 @@ final class EnvKitServiceProvider extends PackageServiceProvider
         // The shipped update gate: env-aware default, bridged to a Laravel `env-kit.update`
         // ability when the consumer defines one. Consumers swap/decorate via configure().
         $configurator->setDefaultUpdateGate(new LaravelAbilityGate(new DefaultUpdateGate));
+
+        // Opt-in notifications: subscribed always; the listener no-ops unless enabled.
+        Event::subscribe(SendEnvKitNotification::class);
+
+        // Tag-based registration: seed container-tagged extensions onto the configurator
+        // once, after every provider has registered/booted (so all consumer tags are seen).
+        $this->app->booted(function () use ($configurator): void {
+            foreach ($this->app->tagged('env-kit.doctor_rules') as $rule) {
+                if ($rule instanceof DoctorRuleInterface) {
+                    $configurator->registerDoctorRule($rule);
+                }
+            }
+            foreach ($this->app->tagged('env-kit.port_formats') as $format) {
+                if ($format instanceof PortFormatInterface) {
+                    $configurator->registerPortFormat($format);
+                }
+            }
+            foreach ($this->app->tagged('env-kit.audit_sinks') as $sink) {
+                if ($sink instanceof AuditSinkInterface) {
+                    $configurator->registerAuditSink($sink);
+                }
+            }
+            foreach ($this->app->tagged('env-kit.observers') as $observer) {
+                if ($observer instanceof WriteObserverInterface) {
+                    $configurator->observe($observer);
+                }
+            }
+        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([

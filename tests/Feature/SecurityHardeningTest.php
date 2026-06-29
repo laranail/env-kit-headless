@@ -36,3 +36,12 @@ it('rejects NUL bytes in written values', function () {
     expect(fn () => EnvKit::set('A', "x\0y"))->toThrow(InvalidValueException::class);
     expect(EnvKit::getString('A'))->toBe('1'); // unchanged
 });
+
+it('rejects values longer than the configured limit', function () {
+    $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false, 'env-kit.limits.max_value_length' => 10]);
+
+    expect(fn () => EnvKit::set('A', str_repeat('x', 11)))->toThrow(InvalidValueException::class);
+
+    EnvKit::set('A', str_repeat('x', 10)); // exactly at the limit is allowed
+    expect(EnvKit::getString('A'))->toBe(str_repeat('x', 10));
+});

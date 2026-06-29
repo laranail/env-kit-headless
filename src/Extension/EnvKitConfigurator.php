@@ -53,6 +53,21 @@ final class EnvKitConfigurator
 
     private ?ActorResolverInterface $actorResolver = null;
 
+    private ?int $valueLengthLimit = null;
+
+    /** Cap the byte-length of any written value (null = unbounded). */
+    public function limitValueLength(?int $max): self
+    {
+        $this->valueLengthLimit = $max;
+
+        return $this;
+    }
+
+    public function valueLengthLimit(): ?int
+    {
+        return $this->valueLengthLimit;
+    }
+
     private ?UpdateGateInterface $updateGate = null;
 
     private ?UpdateGateInterface $defaultUpdateGate = null;

@@ -15,6 +15,11 @@ final class InvalidValueException extends EnvKitException
         return new self('Value contains a NUL byte'.($key !== null ? " (key {$key})" : '').'.');
     }
 
+    public static function tooLong(?string $key, int $max): self
+    {
+        return new self('Value exceeds the maximum length of '.$max.' bytes'.($key !== null ? " (key {$key})" : '').'.');
+    }
+
     public function envKitReason(): string
     {
         return 'invalid';

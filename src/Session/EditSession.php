@@ -46,7 +46,7 @@ final class EditSession
     }
 
     /** Open a session for $path (an absent file starts as an empty document). */
-    public static function open(string $path, ?WriterInterface $writer = null, ?CommitPipeline $pipeline = null, ?string $actor = null, ?Dispatcher $events = null): self
+    public static function open(string $path, ?WriterInterface $writer = null, ?CommitPipeline $pipeline = null, ?string $actor = null, ?Dispatcher $events = null, ?ValueSanitizer $sanitizer = null): self
     {
         $raw = is_file($path) ? (string) @file_get_contents($path) : '';
         $conflicts = new ConflictDetector;
@@ -57,6 +57,7 @@ final class EditSession
             fingerprint: $conflicts->fingerprint($path),
             conflicts: $conflicts,
             pipeline: $pipeline ?? CommitPipeline::default($writer),
+            sanitizer: $sanitizer ?? new ValueSanitizer,
             actor: $actor,
             events: $events,
         );

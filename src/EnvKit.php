@@ -42,6 +42,7 @@ use Simtabi\Laranail\EnvKit\Headless\Security\EditableKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProductionGuard;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\SecretRedactor;
+use Simtabi\Laranail\EnvKit\Headless\Security\ValueSanitizer;
 use Simtabi\Laranail\EnvKit\Headless\Session\EditSession;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
@@ -522,7 +523,13 @@ final class EnvKit implements EnvKitInterface
 
     private function newSession(): EditSession
     {
-        return EditSession::open($this->path, pipeline: $this->pipeline(), actor: $this->configurator->resolveActor(), events: $this->events);
+        return EditSession::open(
+            $this->path,
+            pipeline: $this->pipeline(),
+            actor: $this->configurator->resolveActor(),
+            events: $this->events,
+            sanitizer: new ValueSanitizer($this->configurator->valueLengthLimit()),
+        );
     }
 
     private function auditPipe(): Audit

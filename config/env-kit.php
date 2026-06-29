@@ -34,6 +34,29 @@ return [
     'audit' => [
         'enabled' => true,
         'path' => storage_path('env-kit/audit.log'), // JSON-lines (file sink, the default)
+        // Optional static actor override; null = resolve the authenticated user,
+        // else a console/system identity. Customise via configure()->resolveActorUsing().
+        'actor' => null,
+    ],
+
+    // Bounds on written keys/values (defence against accidental/abusive huge writes).
+    'limits' => [
+        'max_value_length' => 32768, // 32 KiB per value; null = unbounded
+        'max_key_length' => 256,
+    ],
+
+    // Opt-in operator alerts: turn lifecycle events into Laravel on-demand
+    // notifications. Non-mail/database channels need their notification-channel
+    // package (e.g. laravel/slack-notification-channel for 'slack').
+    'notifications' => [
+        'enabled' => false,
+        'channels' => ['mail'],
+        'routes' => [ // channel => on-demand recipient (null = skip the channel)
+            'mail' => null,
+            'slack' => null,
+        ],
+        'events' => ['after_write', 'write_rejected'],
+        'production_only' => true,
     ],
 
     // Per-value encryption-at-rest. The `laravel` driver uses the APP_KEY
