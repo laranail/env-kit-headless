@@ -1,8 +1,9 @@
 name: Mutation
 
 # Pest's native mutation testing (Infection does not support Pest suites).
-# Mutation runs are slow, so this is scheduled/manual rather than per-push, and
-# non-blocking: the MSI >= 85 target is a quality metric we drive toward over time.
+# Mutation runs are slow, so this is scheduled/manual rather than per-push.
+# The suite holds covered-MSI at ~87% (>= the 85% gate), so this job is a hard
+# gate: a regression below 85% fails the run.
 
 on:
   workflow_dispatch:
@@ -13,7 +14,6 @@ jobs:
   mutate:
     name: Mutation score
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - name: Checkout

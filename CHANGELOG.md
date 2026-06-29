@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Switched mutation testing from Infection (which has no Pest-suite support) to
+  Pest's native `--mutate`; added a `composer mutate` script and a scheduled CI gate.
+
+### Tests
+
+- Hardened the suite against mutation testing to **~87% covered-MSI** (engine-core
+  classes individually 85–100%; the remaining survivors are equivalent or
+  tooling-unreachable mutants). Test count grew from 156 to 332.
+
 ## [0.1.0] - 2026-06-28
 
 ### Added

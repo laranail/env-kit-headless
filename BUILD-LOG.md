@@ -158,3 +158,8 @@ Spec: `_scratch-files/dotenv-editor-consolidation-plan.md`. Process: the EnvKit 
 
 **Headless feature surface complete.** 14 CLI commands; programmatic + CLI + TUI faces; full
 extensibility, audit/events, fake(), encryption, doctor, diff, import/export.
+
+- **Mutation testing (permanent fix):** switched Infection → Pest `--mutate` (Infection has no Pest
+  support). Hardened across 3 rounds (12 subagents) to **~87% covered-MSI** (156→332 tests); engine-core
+  classes 85–100%, residuals equivalent/tool-unreachable. `composer mutate` + a blocking scheduled CI gate
+  (`--covered-only --min=85`).
