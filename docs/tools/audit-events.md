@@ -54,6 +54,11 @@ Event::listen(function (AfterWrite $event) {
 Because the payload is redacted, listeners and queued jobs can never leak a secret.
 A no-op write (nothing actually changed) is neither audited nor broadcast.
 
+`AfterWrite` is one of a **full lifecycle event set** (BeforeWrite, WriteRejected,
+BackupCreated, Before/AfterRestore, ConflictDetected, WriteRolledBack) — all redacted and
+actor-attributed. See **[Events](../events.md)** for the complete table and
+**[Notifications](../notifications.md)** to turn them into operator alerts.
+
 ---
 
 [← Docs index](../../README.md#documentation)
