@@ -320,11 +320,7 @@ final class EnvKit implements EnvKitInterface
             throw BackupNotFoundException::named($name);
         }
 
-        (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
-
         $actor = $this->configurator->resolveActor();
-        $this->events?->dispatch(new BeforeRestore($this->path, $name, $actor));
-
         $writer = $this->configurator->writer() ?? new AtomicEnvWriter;
         $context = new CommitContext(
             $this->path,
@@ -338,6 +334,11 @@ final class EnvKit implements EnvKitInterface
         $observers = $this->configurator->observers();
 
         try {
+            // Inside the try so a production-blocked restore emits WriteRejected and
+            // resets the override via `finally`, consistent with the normal write path.
+            (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
+            $this->events?->dispatch(new BeforeRestore($this->path, $name, $actor));
+
             (new Pipeline)
                 ->send($context)
                 ->through(array_values(array_filter([

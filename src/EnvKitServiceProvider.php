@@ -75,11 +75,14 @@ final class EnvKitServiceProvider extends PackageServiceProvider
             $auditEnabled = (bool) ($audit['enabled'] ?? true);
             $auditPath = is_string($audit['path'] ?? null) ? $audit['path'] : (string) $app->storagePath('env-kit/audit.log');
 
-            // Read the value-length cap fresh per resolution (config-accurate at runtime).
-            $limits = is_array($config['limits'] ?? null) ? $config['limits'] : [];
-            $maxValue = $limits['max_value_length'] ?? null;
+            // Seed the value-length cap from config — but only when the consumer's DSL
+            // (configure()->limitValueLength()) hasn't already set one, so the DSL wins.
             $configurator = $app->make(EnvKitConfigurator::class);
-            $configurator->limitValueLength(is_int($maxValue) ? $maxValue : null);
+            if (! $configurator->hasValueLengthLimit()) {
+                $limits = is_array($config['limits'] ?? null) ? $config['limits'] : [];
+                $maxValue = $limits['max_value_length'] ?? null;
+                $configurator->limitValueLength(is_numeric($maxValue) ? (int) $maxValue : null);
+            }
 
             return new EnvKit(
                 path: (string) ($config['path'] ?? $app->basePath('.env')),

@@ -3,11 +3,31 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Event;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
 use Simtabi\Laranail\EnvKit\Headless\Events\AfterWrite;
+use Simtabi\Laranail\EnvKit\Headless\Events\BeforeRestore;
+use Simtabi\Laranail\EnvKit\Headless\Events\WriteRejected;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\ProductionGuardException;
 use Simtabi\Laranail\EnvKit\Headless\Facades\EnvKit;
 use Simtabi\Laranail\EnvKit\Headless\Tests\TestCase;
 
 uses(TestCase::class);
+
+it('emits WriteRejected (and not BeforeRestore) when a restore is blocked in production', function () {
+    $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false]);
+    $backup = EnvKit::backup();
+    EnvKit::set('A', '2');
+
+    $this->app['env'] = 'production';
+    $this->app->forgetInstance(EnvKitInterface::class);
+    EnvKit::clearResolvedInstances(); // drop the cached non-production instance
+    Event::fake([WriteRejected::class, BeforeRestore::class]);
+
+    expect(fn () => EnvKit::restore($backup->name))->toThrow(ProductionGuardException::class);
+
+    Event::assertDispatched(WriteRejected::class, fn (WriteRejected $e) => $e->reason === 'production');
+    Event::assertNotDispatched(BeforeRestore::class);
+});
 
 it('restores a backup and records it to the audit trail', function () {
     $path = $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false, 'env-kit.audit.enabled' => true]);

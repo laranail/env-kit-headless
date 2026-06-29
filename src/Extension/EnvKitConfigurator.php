@@ -55,12 +55,21 @@ final class EnvKitConfigurator
 
     private ?int $valueLengthLimit = null;
 
-    /** Cap the byte-length of any written value (null = unbounded). */
+    private bool $valueLengthLimitSet = false;
+
+    /** Cap the byte-length of any written value (null = unbounded). Takes precedence over config. */
     public function limitValueLength(?int $max): self
     {
         $this->valueLengthLimit = $max;
+        $this->valueLengthLimitSet = true;
 
         return $this;
+    }
+
+    /** Whether a consumer set the limit explicitly (so the provider must not clobber it). */
+    public function hasValueLengthLimit(): bool
+    {
+        return $this->valueLengthLimitSet;
     }
 
     public function valueLengthLimit(): ?int

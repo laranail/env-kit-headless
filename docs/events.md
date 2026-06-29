@@ -17,6 +17,10 @@ so listeners and logs can't leak secrets.
 Events are **notifications, not veto seams** — to block a write use the [update gate or an
 observer](authorization.md), or a mutation-pipeline pipe that skips `$next`.
 
+> `BeforeWrite` fires *before* the write is verified, so a write that later fails integrity
+> verification (`WriteRolledBack`) will already have emitted `BeforeWrite`. Treat `AfterWrite`
+> as the durable-success signal.
+
 ```php
 use Illuminate\Support\Facades\Event;
 use Simtabi\Laranail\EnvKit\Headless\Events\WriteRejected;
