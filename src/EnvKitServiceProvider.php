@@ -84,6 +84,9 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 $configurator->limitValueLength(is_numeric($maxValue) ? (int) $maxValue : null);
             }
 
+            // Seed the validation schema from config (once); runtime schema()->… rules persist.
+            $configurator->seedSchemaFromConfig(is_array($config['schema'] ?? null) ? $config['schema'] : []);
+
             return new EnvKit(
                 path: (string) ($config['path'] ?? $app->basePath('.env')),
                 autoCommit: (bool) ($config['auto_commit'] ?? true),

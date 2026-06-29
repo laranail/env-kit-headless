@@ -16,6 +16,7 @@ use Simtabi\Laranail\EnvKit\Headless\Contracts\ValueCipherInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\WriteObserverInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\WriterInterface;
 use Simtabi\Laranail\EnvKit\Headless\EnvKit;
+use Simtabi\Laranail\EnvKit\Headless\Schema\EnvSchema;
 
 /**
  * The fluent registration DSL (`EnvKit::configure()->…`). A bound singleton a
@@ -56,6 +57,41 @@ final class EnvKitConfigurator
     private ?int $valueLengthLimit = null;
 
     private bool $valueLengthLimitSet = false;
+
+    private ?EnvSchema $schema = null;
+
+    private bool $schemaSeeded = false;
+
+    /** The runtime schema builder (lazily created; shared with config-seeded rules). */
+    public function schema(): EnvSchema
+    {
+        return $this->schema ??= new EnvSchema;
+    }
+
+    /**
+     * Provider-seeded once from config('env-kit.schema') — runtime `schema()->…` rules
+     * (added in the consumer's boot) are preserved on the same instance.
+     *
+     * @param  array<array-key, mixed>  $rules
+     */
+    public function seedSchemaFromConfig(array $rules): void
+    {
+        if ($this->schemaSeeded) {
+            return;
+        }
+        $this->schemaSeeded = true;
+
+        foreach ($rules as $key => $spec) {
+            if (! is_string($key)) {
+                continue;
+            }
+            if (is_string($spec)) {
+                $this->schema()->define($key, $spec);
+            } elseif (is_array($spec)) {
+                $this->schema()->define($key, array_values(array_map(static fn (mixed $r): string => is_scalar($r) ? (string) $r : '', $spec)));
+            }
+        }
+    }
 
     /** Cap the byte-length of any written value (null = unbounded). Takes precedence over config. */
     public function limitValueLength(?int $max): self

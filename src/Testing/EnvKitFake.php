@@ -15,8 +15,11 @@ use Simtabi\Laranail\EnvKit\Headless\Doctor\Doctor;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\KeyNotFoundException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\SchemaException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
+use Simtabi\Laranail\EnvKit\Headless\Results\ValidationResult;
+use Simtabi\Laranail\EnvKit\Headless\Schema\EnvSchema;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
 
@@ -36,6 +39,8 @@ final class EnvKitFake implements EnvKitInterface
     private TypedAccessor $typed;
 
     private Interpolator $interpolator;
+
+    private ?EnvKitConfigurator $configurator = null;
 
     /** @param array<string, string> $initial */
     public function __construct(array $initial = [])
@@ -351,7 +356,33 @@ final class EnvKitFake implements EnvKitInterface
 
     public function configure(): EnvKitConfigurator
     {
-        return new EnvKitConfigurator;
+        return $this->configurator ??= new EnvKitConfigurator;
+    }
+
+    public function schema(): EnvSchema
+    {
+        return $this->configure()->schema();
+    }
+
+    public function validate(): ValidationResult
+    {
+        return $this->schema()->validate($this->values);
+    }
+
+    public function isValid(): bool
+    {
+        return $this->validate()->passed();
+    }
+
+    public function assertValid(): static
+    {
+        $result = $this->validate();
+
+        if ($result->failed()) {
+            throw SchemaException::failed($result->messages());
+        }
+
+        return $this;
     }
 
     public function backup(?string $name = null): ?BackupFile

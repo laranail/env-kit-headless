@@ -45,6 +45,14 @@ return [
         'max_key_length' => 256,
     ],
 
+    // Validation schema (Laravel-style rule specs). Feeds `env:validate` + EnvKit::validate().
+    // Runtime additions: EnvKit::schema()->required('APP_KEY')->integer('PORT')->...
+    'schema' => [
+        // 'APP_ENV'  => 'required|in:local,testing,staging,production',
+        // 'APP_DEBUG'=> 'boolean',
+        // 'APP_URL'  => 'url',
+    ],
+
     // Opt-in operator alerts: turn lifecycle events into Laravel on-demand
     // notifications. Non-mail/database channels need their notification-channel
     // package (e.g. laravel/slack-notification-channel for 'slack').

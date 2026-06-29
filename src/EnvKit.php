@@ -28,6 +28,7 @@ use Simtabi\Laranail\EnvKit\Headless\Exceptions\EnvKitException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\IntegrityException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\InvalidEnvironmentException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\KeyNotFoundException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\SchemaException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
@@ -39,6 +40,8 @@ use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Observe;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Verify;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Write;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
+use Simtabi\Laranail\EnvKit\Headless\Results\ValidationResult;
+use Simtabi\Laranail\EnvKit\Headless\Schema\EnvSchema;
 use Simtabi\Laranail\EnvKit\Headless\Security\EditableKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProductionGuard;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
@@ -477,6 +480,35 @@ final class EnvKit implements EnvKitInterface
     public function inspect(): array
     {
         return Doctor::withDefaults(...$this->configurator->doctorRules())->inspect($this->document());
+    }
+
+    /** The schema builder — chain rules: `EnvKit::schema()->required('APP_KEY')->integer('PORT')`. */
+    public function schema(): EnvSchema
+    {
+        return $this->configurator->schema();
+    }
+
+    /** Validate the current .env against the resolved schema. */
+    public function validate(): ValidationResult
+    {
+        return $this->schema()->validate($this->all());
+    }
+
+    public function isValid(): bool
+    {
+        return $this->validate()->passed();
+    }
+
+    /** @throws SchemaException when the .env does not satisfy the schema. */
+    public function assertValid(): static
+    {
+        $result = $this->validate();
+
+        if ($result->failed()) {
+            throw SchemaException::failed($result->messages());
+        }
+
+        return $this;
     }
 
     /**

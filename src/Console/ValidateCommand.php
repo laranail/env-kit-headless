@@ -14,7 +14,7 @@ final class ValidateCommand extends AbstractEnvCommand
     protected $signature = 'laranail::env-kit-headless.validate {--file= : operate on a custom .env file}';
 
     /** @var string */
-    protected $description = 'Check every key/value for well-formedness.';
+    protected $description = 'Check every key/value for well-formedness + the configured schema.';
 
     /** @var list<string> */
     protected array $commandAliases = ['env:validate'];
@@ -22,7 +22,8 @@ final class ValidateCommand extends AbstractEnvCommand
     public function handle(EnvKit $env): int
     {
         return $this->runSafely(function () use ($env): int {
-            $entries = $this->targetEnv($env)->all();
+            $target = $this->targetEnv($env);
+            $entries = $target->all();
             $keyValidator = new KeyValidator;
             $sanitizer = new ValueSanitizer;
 
@@ -34,6 +35,11 @@ final class ValidateCommand extends AbstractEnvCommand
                 if (! $sanitizer->isClean($value)) {
                     $violations[] = "Unsafe control characters in value for key [{$key}].";
                 }
+            }
+
+            // Schema rules (config + runtime), when any are defined.
+            foreach ($target->validate()->messages() as $message) {
+                $violations[] = "Schema: {$message}";
             }
 
             if ($violations !== []) {
