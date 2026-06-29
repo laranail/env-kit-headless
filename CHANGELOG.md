@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Expanded edge-case/regression coverage (notification mail rendering, atomic-writer +
   integrity-verifier failure/rollback paths, cipher passthrough + corruption, the no-op
-  observer base, the base-exception reason) — line coverage ~95%.
+  observer base, the base-exception reason, CLI empty/missing-file paths, and document-entry
+  edge cases — BOM detection, comment round-trip, `Setter::withValue`) — line coverage ~96%.
 
 ## [0.2.1] - 2026-06-29
 
