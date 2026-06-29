@@ -30,7 +30,9 @@ Three independent lists govern keys at different layers:
   anything that must only change through a deliberate, separate process.
 - **`editable_keys`** — a *write allowlist*. When non-empty, any write (set, delete,
   rename) to a key that matches no pattern raises `NotEditableException`. Empty = no
-  restriction. Use it to lock the editable surface down to a known set.
+  restriction. Use it to lock the editable surface down to a known set. (Like
+  `protected_keys`, this is bypassed by `restore()`, which reinstates a whole
+  known-good snapshot.)
 - **`hidden_keys`** — a *display* guard. Matching values are masked (`••••`) in
   `env:list`, the web panel, and exports unless secrets are explicitly revealed.
 
