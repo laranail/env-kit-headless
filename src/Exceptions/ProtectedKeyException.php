@@ -11,4 +11,9 @@ final class ProtectedKeyException extends EnvKitException
     {
         return new self("Refusing to modify protected key: {$key}.");
     }
+
+    public function envKitReason(): string
+    {
+        return 'protected';
+    }
 }

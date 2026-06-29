@@ -15,4 +15,9 @@ final class ProductionGuardException extends EnvKitException
             .'or set protect_production=false.'
         );
     }
+
+    public function envKitReason(): string
+    {
+        return 'production';
+    }
 }

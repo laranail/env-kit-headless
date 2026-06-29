@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Simtabi\Laranail\EnvKit\Headless\Events;
 
 /**
- * Dispatched after a successful commit. `$changes` carry key names with
- * ALREADY-REDACTED values, so queued listeners and logs can't leak secrets.
+ * Dispatched just before a commit is written to disk. `$changes` carry key names
+ * with ALREADY-REDACTED values. This is a notification, not a veto seam — to block
+ * a write, push a mutation-pipeline pipe that skips `$next`, or use a write gate /
+ * observer (Part 6).
  */
-final class AfterWrite
+final class BeforeWrite
 {
     /** @param list<array{key: string, old: ?string, new: ?string}> $changes */
     public function __construct(

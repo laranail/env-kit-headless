@@ -14,4 +14,9 @@ final class InvalidValueException extends EnvKitException
     {
         return new self('Value contains a NUL byte'.($key !== null ? " (key {$key})" : '').'.');
     }
+
+    public function envKitReason(): string
+    {
+        return 'invalid';
+    }
 }

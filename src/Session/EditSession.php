@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace Simtabi\Laranail\EnvKit\Headless\Session;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\WriterInterface;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Events\ConflictDetected;
+use Simtabi\Laranail\EnvKit\Headless\Events\WriteRejected;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\ConflictException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\EnvKitException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\IntegrityException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\KeyNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
@@ -34,12 +40,13 @@ final class EditSession
         private readonly CommitPipeline $pipeline,
         private readonly ValueSanitizer $sanitizer = new ValueSanitizer,
         private readonly ?string $actor = null,
+        private readonly ?Dispatcher $events = null,
     ) {
         $this->working = $original;
     }
 
     /** Open a session for $path (an absent file starts as an empty document). */
-    public static function open(string $path, ?WriterInterface $writer = null, ?CommitPipeline $pipeline = null, ?string $actor = null): self
+    public static function open(string $path, ?WriterInterface $writer = null, ?CommitPipeline $pipeline = null, ?string $actor = null, ?Dispatcher $events = null): self
     {
         $raw = is_file($path) ? (string) @file_get_contents($path) : '';
         $conflicts = new ConflictDetector;
@@ -51,6 +58,7 @@ final class EditSession
             conflicts: $conflicts,
             pipeline: $pipeline ?? CommitPipeline::default($writer),
             actor: $actor,
+            events: $events,
         );
     }
 
@@ -156,15 +164,38 @@ final class EditSession
             return $this;
         }
 
-        $this->conflicts->ensureUnchanged($this->path, $this->fingerprint);
+        try {
+            $this->conflicts->ensureUnchanged($this->path, $this->fingerprint);
+        } catch (ConflictException $e) {
+            $this->events?->dispatch(new ConflictDetected(
+                $this->path,
+                $this->fingerprint,
+                $this->conflicts->fingerprint($this->path),
+                $this->actor,
+            ));
+            throw $e;
+        }
 
-        $this->pipeline->run(new CommitContext(
-            path: $this->path,
-            document: $this->working,
-            original: $this->original,
-            allowProduction: $this->allowProduction,
-            actor: $this->actor,
-        ));
+        try {
+            $this->pipeline->run(new CommitContext(
+                path: $this->path,
+                document: $this->working,
+                original: $this->original,
+                allowProduction: $this->allowProduction,
+                actor: $this->actor,
+            ));
+        } catch (IntegrityException $e) {
+            // A post-write rollback already emitted WriteRolledBack; not a rejection.
+            throw $e;
+        } catch (EnvKitException $e) {
+            $this->events?->dispatch(new WriteRejected(
+                $this->path,
+                $e->envKitReason(),
+                array_keys($this->changes()),
+                $this->actor,
+            ));
+            throw $e;
+        }
 
         return $this;
     }

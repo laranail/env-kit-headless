@@ -10,4 +10,9 @@ final class NotEditableException extends EnvKitException
     {
         return new self("Key [{$key}] is not in the editable allowlist.");
     }
+
+    public function envKitReason(): string
+    {
+        return 'not_editable';
+    }
 }

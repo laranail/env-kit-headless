@@ -18,6 +18,9 @@ use Simtabi\Laranail\EnvKit\Headless\Doctor\Diagnostic;
 use Simtabi\Laranail\EnvKit\Headless\Doctor\Doctor;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Events\AfterRestore;
+use Simtabi\Laranail\EnvKit\Headless\Events\BackupCreated;
+use Simtabi\Laranail\EnvKit\Headless\Events\BeforeRestore;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\BackupNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\InvalidEnvironmentException;
@@ -26,6 +29,7 @@ use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Audit;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Backup;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Notify;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Verify;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Write;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
@@ -282,7 +286,13 @@ final class EnvKit implements EnvKitInterface
     /** Snapshot the current file. Returns null when there is nothing to back up. */
     public function backup(): ?BackupFile
     {
-        return $this->backups->backup($this->path);
+        $backup = $this->backups->backup($this->path);
+
+        if ($backup !== null) {
+            $this->events?->dispatch(new BackupCreated($this->path, $backup, $this->configurator->resolveActor()));
+        }
+
+        return $backup;
     }
 
     /**
@@ -306,27 +316,36 @@ final class EnvKit implements EnvKitInterface
 
         (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
 
+        $actor = $this->configurator->resolveActor();
+        $this->events?->dispatch(new BeforeRestore($this->path, $name, $actor));
+
         $writer = $this->configurator->writer() ?? new AtomicEnvWriter;
         $context = new CommitContext(
             $this->path,
             EnvDocument::parse($contents),
             $this->document(),
             $this->allowProduction,
-            actor: $this->configurator->resolveActor(),
+            actor: $actor,
             operation: 'restore',
         );
 
-        (new Pipeline)
-            ->send($context)
-            ->through([
-                new Backup($this->autoBackup ? $this->backups : null),
-                new Write($writer),
-                new Verify($writer, new IntegrityVerifier),
-                $this->auditPipe(),
-            ])
-            ->thenReturn();
+        try {
+            (new Pipeline)
+                ->send($context)
+                ->through([
+                    new Notify($this->redactor, $this->events),
+                    new Backup($this->autoBackup ? $this->backups : null, $this->events),
+                    new Write($writer),
+                    new Verify($writer, new IntegrityVerifier, $this->events),
+                    $this->auditPipe(),
+                ])
+                ->thenReturn();
+        } finally {
+            // Reset the override even if the restore pipeline throws (no leak to the next op).
+            $this->allowProduction = false;
+        }
 
-        $this->allowProduction = false;
+        $this->events?->dispatch(new AfterRestore($this->path, $backup, $actor));
 
         return $backup;
     }
@@ -489,7 +508,7 @@ final class EnvKit implements EnvKitInterface
 
     private function newSession(): EditSession
     {
-        return EditSession::open($this->path, pipeline: $this->pipeline(), actor: $this->configurator->resolveActor());
+        return EditSession::open($this->path, pipeline: $this->pipeline(), actor: $this->configurator->resolveActor(), events: $this->events);
     }
 
     private function auditPipe(): Audit
@@ -512,7 +531,10 @@ final class EnvKit implements EnvKitInterface
             protected: new ProtectedKeys([...$this->protectedKeys, ...$this->configurator->protectedKeys()]),
             audit: $audit,
             editable: new EditableKeys([...$this->editableKeys, ...$this->configurator->editableKeys()]),
+            events: $this->events,
         );
+
+        $pipeline->beforeWrite(new Notify($this->redactor, $this->events));
 
         foreach ($this->configurator->mutationMiddleware() as $pipe) {
             $pipeline->push($pipe);
