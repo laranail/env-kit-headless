@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Encryption\Encrypter;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\ValueCipherInterface;
 use Simtabi\Laranail\EnvKit\Headless\EnvKitManager;
 use Simtabi\Laranail\EnvKit\Headless\Facades\EnvKit;
@@ -9,6 +10,38 @@ use Simtabi\Laranail\EnvKit\Headless\Security\LaravelValueCipher;
 use Simtabi\Laranail\EnvKit\Headless\Tests\TestCase;
 
 uses(TestCase::class);
+
+it('reads the configured encryption driver name, defaulting to laravel', function () {
+    $manager = app(EnvKitManager::class);
+
+    expect($manager->getDefaultDriver())->toBe('laravel');
+
+    config(['env-kit.encryption.driver' => 'custom-name']);
+    expect($manager->getDefaultDriver())->toBe('custom-name');
+
+    // A non-string config value falls back to the 'laravel' default.
+    config(['env-kit.encryption.driver' => ['not', 'a', 'string']]);
+    expect($manager->getDefaultDriver())->toBe('laravel');
+});
+
+it('throws when a resolved driver is not a ValueCipherInterface', function () {
+    $manager = app(EnvKitManager::class);
+
+    $manager->extend('not-a-cipher', fn () => new stdClass);
+
+    expect(fn () => $manager->cipher('not-a-cipher'))
+        ->toThrow(LogicException::class);
+});
+
+it('passes the container to custom driver creators', function () {
+    $manager = app(EnvKitManager::class);
+
+    $manager->extend('from-container', fn ($container) => new LaravelValueCipher(
+        $container->make(Encrypter::class),
+    ));
+
+    expect($manager->cipher('from-container'))->toBeInstanceOf(LaravelValueCipher::class);
+});
 
 it('encrypts a value at rest and decrypts it back', function () {
     $path = $this->bindEnv("API_TOKEN=plaintext-secret\n", ['env-kit.auto_backup' => false]);
