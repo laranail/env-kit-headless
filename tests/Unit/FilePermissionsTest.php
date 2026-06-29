@@ -11,8 +11,17 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    array_map('unlink', glob($this->dir.'/**/*') ?: []);
-    array_map('unlink', glob($this->dir.'/*') ?: []);
+    $remove = function (string $dir) use (&$remove): void {
+        foreach (array_diff(scandir($dir) ?: [], ['.', '..']) as $entry) {
+            $path = $dir.'/'.$entry;
+            is_dir($path) ? $remove($path) : unlink($path);
+        }
+        rmdir($dir);
+    };
+
+    if (is_dir($this->dir)) {
+        $remove($this->dir);
+    }
 });
 
 it('writes a new .env owner-only (0600)', function () {

@@ -90,6 +90,31 @@ $this->app->extend(EnvKitInterface::class, fn ($env) => new LoggingEnvKit($env))
 | `Contracts\DoctorRuleInterface` | A custom health-check rule |
 | `Contracts\PortFormatInterface` | A custom import/export format |
 
+## Tag-based registration
+
+As an alternative to the `configure()` DSL, register extensions by container **tag** — handy
+when you prefer pure container wiring. EnvKit collects them at boot:
+
+```php
+$this->app->bind(MyRule::class);
+$this->app->tag([MyRule::class], 'env-kit.doctor_rules');
+// also: env-kit.port_formats, env-kit.audit_sinks, env-kit.observers
+```
+
+## Authorization & observers
+
+Reshaping *who* may write and reacting to writes has its own page —
+**[Authorization](authorization.md)** (the update gate, write observers, the Laravel-ability
+bridge, and a "which seam do I use?" table).
+
+## Pattern choices (why it's built this way)
+
+- **Manager** (`EnvKitManager`) is used for **ciphers** — the one genuinely multi-driver
+  concept. Writers use a single contract + decorator seam (`useWriter()` / container
+  `extend()`); rules / sinks / formats / observers are additive collections (DSL **and** tags).
+- **Contextual binding** (`when()->needs()->give()`) needs no package code — it is stock
+  Laravel and works against EnvKit's contracts as-is.
+
 ## Testing against EnvKit
 
 Swap the engine for an in-memory fake — no disk I/O:

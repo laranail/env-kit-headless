@@ -101,7 +101,10 @@ Full reference: **[docs/configuration.md](docs/configuration.md)**.
 | [Installation](docs/installation.md) | Requirements, install, publishing config, the `ENV_KIT_PATH` override |
 | [Configuration](docs/configuration.md) | Every config key, layered key policy, schema precedence |
 | [Architecture](docs/architecture.md) | The document model, commit pipeline, atomic writer, security core |
-| [Extending](docs/extending.md) | `configure()` DSL, Macroable, `EnvKitManager`, pipeline middleware, custom drivers |
+| [Extending](docs/extending.md) | `configure()` DSL, Macroable, `EnvKitManager`, pipeline middleware, custom drivers, tag-based registration |
+| [Authorization](docs/authorization.md) | The update gate + write observers, the Laravel-ability bridge, the "which seam" table |
+| [Events](docs/events.md) | The lifecycle event table, actor attribution, listening |
+| [Notifications](docs/notifications.md) | Opt-in operator alerts, channels, testing |
 | [Release](docs/release.md) | Versioning, the release workflow, trusted publishing |
 | [Programmatic API](docs/tools/programmatic-api.md) | Reads, typed getters, the three write modes, `EnvKit::fake()` |
 | [CLI](docs/tools/cli.md) | All 14 commands, exit-code contract, `--file` / `--force-production` |

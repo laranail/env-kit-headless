@@ -65,3 +65,67 @@ it('fires the granular updating hook and can veto a single key', function () {
     EnvKit::set('B', '9'); // a different key is fine
     expect(EnvKit::get('B'))->toBe('9');
 });
+
+it('fires creating for a new key and deleting for a removed key', function () {
+    $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false]);
+    $observer = new class extends AbstractWriteObserver
+    {
+        /** @var list<string> */
+        public array $log = [];
+
+        public function creating(string $key, ?string $old, ?string $new): null
+        {
+            $this->log[] = "create:{$key}";
+
+            return null;
+        }
+
+        public function deleting(string $key, ?string $old, ?string $new): null
+        {
+            $this->log[] = "delete:{$key}";
+
+            return null;
+        }
+    };
+    app(EnvKitConfigurator::class)->observe($observer);
+
+    EnvKit::set('C', '3'); // a new key → creating
+    EnvKit::forget('A');   // a removed key → deleting
+
+    expect($observer->log)->toContain('create:C')->toContain('delete:A');
+});
+
+it('fires restoring/restored (not saving) on a restore', function () {
+    $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false]);
+    $observer = new class extends AbstractWriteObserver
+    {
+        /** @var list<string> */
+        public array $log = [];
+
+        public function saving(WriteContext $context): null
+        {
+            $this->log[] = 'saving';
+
+            return null;
+        }
+
+        public function restoring(WriteContext $context): null
+        {
+            $this->log[] = 'restoring';
+
+            return null;
+        }
+
+        public function restored(WriteContext $context): void
+        {
+            $this->log[] = 'restored';
+        }
+    };
+    app(EnvKitConfigurator::class)->observe($observer);
+
+    $backup = EnvKit::backup();
+    EnvKit::set('A', '2');        // saving
+    EnvKit::restore($backup->name); // restoring + restored (no saving)
+
+    expect($observer->log)->toBe(['saving', 'restoring', 'restored']);
+});

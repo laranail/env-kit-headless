@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-29
+
+### Added
+
+- **Secure-update authorization.** A pluggable `UpdateGateInterface` over every write +
+  restore, with a shipped permissive `DefaultUpdateGate` bridged to a Laravel
+  `env-kit.update` ability (`LaravelAbilityGate`). Swap or wrap it at runtime via
+  `configure()->useUpdateGate()` / `decorateUpdateGate()` (decorators compose,
+  last-outermost).
+- **Write observers** (`WriteObserverInterface` + `AbstractWriteObserver`): Eloquent-style
+  `saving`/`saved`/`creating`/`updating`/`deleting`/`restoring`/`restored`; a `false`/deny
+  return vetoes. Register via `configure()->observe()` or the `env-kit.observers` tag.
+- **Lifecycle events**: `BeforeWrite`, `WriteRejected`, `BackupCreated`,
+  `BeforeRestore`/`AfterRestore`, `ConflictDetected`, `WriteRolledBack` (all redacted +
+  actor-attributed; `AfterWrite` now carries the actor + operation).
+- **Opt-in notifications** (`env-kit.notifications`): a queueable listener turns chosen
+  events into Laravel on-demand notifications (mail/slack/…), with `production_only`.
+- **Audit actor attribution**: the audit trail + events record who made the change
+  (`configure()->resolveActorUsing()` / `env-kit.audit.actor`).
+- **Tag-based registration** for doctor rules / port formats / audit sinks / observers
+  (`env-kit.doctor_rules`, …).
+
+### Fixed (security)
+
+- `EnvKit::on()` rejects path-traversal environment names.
+- Every write is sanitized at the single chokepoint (NUL rejected, control chars stripped);
+  added a configurable value-length cap (`env-kit.limits`).
+- New `.env` files and backups are written `0600` (owner-only); backup dir `0700`.
+- `restore()` no longer leaks the production override to the next op on failure.
+
+### Changed
+
+- New deps: `illuminate/auth` (Gate integration), `illuminate/notifications`.
+
 ## [0.1.1] - 2026-06-29
 
 ### Added
@@ -73,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON and CSV import/export via the Porter.
 - `EnvKit::fake()` test seam.
 
-[Unreleased]: https://github.com/laranail/env-kit-headless/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/laranail/env-kit-headless/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/laranail/env-kit-headless/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/laranail/env-kit-headless/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/laranail/env-kit-headless/releases/tag/v0.1.0
