@@ -5,6 +5,14 @@ declare(strict_types=1);
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\ConflictException;
 use Simtabi\Laranail\EnvKit\Headless\Session\ConflictDetector;
 
+if (! function_exists('envkit_is_root')) {
+    /** True when the process can read files it has chmod-ed 0000 (i.e. running as root). */
+    function envkit_is_root(): bool
+    {
+        return function_exists('posix_getuid') ? posix_getuid() === 0 : false;
+    }
+}
+
 it('reports a stable sha256 fingerprint for identical content', function () {
     $path = envkit_temp();
     file_put_contents($path, "A=1\nB=2\n");

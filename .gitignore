@@ -23,3 +23,6 @@ Thumbs.db
 /.idea/
 /.vscode/
 /.fleet/
+
+# stray test backup artifacts
+*.bak

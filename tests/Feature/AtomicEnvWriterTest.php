@@ -7,14 +7,6 @@ use Simtabi\Laranail\EnvKit\Headless\Exceptions\FileNotWritableException;
 use Simtabi\Laranail\EnvKit\Headless\Writer\AtomicEnvWriter;
 use Simtabi\Laranail\EnvKit\Headless\Writer\IntegrityVerifier;
 
-if (! function_exists('envkit_is_root')) {
-    /** True when the process can read files it has chmod-ed 0000 (i.e. running as root). */
-    function envkit_is_root(): bool
-    {
-        return function_exists('posix_getuid') ? posix_getuid() === 0 : false;
-    }
-}
-
 it('writes exact bytes and creates the file', function () {
     $path = envkit_temp();
 
