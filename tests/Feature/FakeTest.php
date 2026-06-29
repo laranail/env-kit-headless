@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\AssertionFailedError;
+use Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
+use Simtabi\Laranail\EnvKit\Headless\Doctor\Diagnostic;
+use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Facades\EnvKit;
 use Simtabi\Laranail\EnvKit\Headless\Testing\EnvKitFake;
 use Simtabi\Laranail\EnvKit\Headless\Tests\TestCase;
@@ -250,4 +253,84 @@ it('assertNothingChanged passes with no writes and fails after one', function ()
     $fake->set('B', '2');
     expect(fn () => $fake->assertNothingChanged())
         ->toThrow(AssertionFailedError::class);
+});
+
+// --- Extended in-memory surface --------------------------------------------
+
+it('file()/on()/allowProduction()/save() are chainable no-ops', function () {
+    $fake = new EnvKitFake(['A' => '1']);
+
+    expect($fake->file('/x/.env'))->toBe($fake)
+        ->and($fake->on('staging'))->toBe($fake)
+        ->and($fake->allowProduction())->toBe($fake)
+        ->and($fake->save())->toBe($fake)
+        ->and($fake->get('A'))->toBe('1'); // store unchanged
+});
+
+it('round-trips encrypted values in memory and records them', function () {
+    $fake = new EnvKitFake;
+
+    expect($fake->setEncrypted('SECRET', 'hunter2'))->toBe($fake)
+        ->and($fake->getDecrypted('SECRET'))->toBe('hunter2')
+        ->and($fake->getDecrypted('MISSING', 'def'))->toBe('def')
+        ->and($fake->encrypt('SECRET'))->toBe($fake)
+        ->and($fake->decrypt('SECRET'))->toBe($fake)
+        ->and($fake->recorded)->toBe([
+            ['action' => 'setEncrypted', 'key' => 'SECRET', 'value' => 'hunter2'],
+            ['action' => 'encrypt', 'key' => 'SECRET', 'value' => null],
+            ['action' => 'decrypt', 'key' => 'SECRET', 'value' => null],
+        ]);
+});
+
+it('exports and imports through the Porter', function () {
+    $fake = new EnvKitFake(['A' => '1']);
+
+    expect(json_decode($fake->export('json'), true))->toBe(['A' => '1']);
+
+    $fake->import('{"NEW":"v"}', 'json');
+    expect($fake->get('NEW'))->toBe('v');
+});
+
+it('diffs the in-memory map against another file', function () {
+    $other = sys_get_temp_dir().'/envkit-fake-diff-'.bin2hex(random_bytes(4)).'.env';
+    file_put_contents($other, "A=1\nGONE=9\n");
+    $fake = new EnvKitFake(['A' => '2', 'NEW' => 'x']);
+
+    $diff = $fake->diff($other);
+
+    expect($diff['only_here'])->toBe(['NEW'])
+        ->and($diff['only_there'])->toBe(['GONE'])
+        ->and($diff['changed'])->toBe(['A']);
+    @unlink($other);
+
+    // against a missing file every key is "only here"
+    expect($fake->diff('/no/such/file.env'))
+        ->toBe(['only_here' => ['A', 'NEW'], 'only_there' => [], 'changed' => []]);
+});
+
+it('inspects the in-memory map via the real doctor rules', function () {
+    $diagnostics = (new EnvKitFake(['A' => '1', 'EMPTY' => '']))->inspect();
+
+    // the blank EMPTY value surfaces a BlankValue diagnostic
+    expect($diagnostics)->not->toBeEmpty()
+        ->and($diagnostics[0])->toBeInstanceOf(Diagnostic::class);
+});
+
+it('returns a fresh configurator and stub backups', function () {
+    $fake = new EnvKitFake(['A' => '1']);
+
+    expect($fake->configure())->toBeInstanceOf(EnvKitConfigurator::class);
+
+    $backup = $fake->backup();
+    expect($backup)->toBeInstanceOf(BackupFile::class)
+        ->and($backup->name)->toBe('fake.bak')
+        ->and($backup->size)->toBe(0)
+        ->and($backup->timestamp)->toBe(0);
+
+    $restored = $fake->restore('snap.bak');
+    expect($restored->name)->toBe('snap.bak')
+        ->and($restored->size)->toBe(0)
+        ->and($restored->timestamp)->toBe(0);
+
+    expect((new EnvKitFake)->backup())->toBeNull(); // nothing to back up
 });

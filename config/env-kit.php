@@ -24,9 +24,9 @@ return [
     'hidden_keys' => ['APP_KEY', '*_PASSWORD', '*_SECRET', '*_TOKEN'], // masked in listings
     'editable_keys' => [], // empty = all non-protected are editable (UI/API)
 
-    // ${VAR} interpolation on read.
+    // ${VAR} interpolation. Values are stored literally; call EnvKit::interpolated()
+    // to resolve references on read (get() always returns the raw at-rest value).
     'interpolation' => [
-        'resolve' => true,
         'on_undefined' => 'empty', // 'empty' | 'throw'
     ],
 
@@ -38,6 +38,10 @@ return [
 
     // Per-value encryption-at-rest. The `laravel` driver uses the APP_KEY
     // Encrypter; register your own via EnvKitManager::extend('driver', fn () => …).
+    //
+    // WARNING: only encrypt keys you read back via EnvKit::getDecrypted(). A key the
+    // app consumes through Laravel's env()/config() must NOT be encrypted — those read
+    // the raw file and would receive the ciphertext, breaking the app.
     'encryption' => [
         'driver' => 'laravel',
     ],

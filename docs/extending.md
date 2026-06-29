@@ -14,6 +14,7 @@ public function boot(): void
 {
     EnvKit::configure()
         ->protectKeys(['STRIPE_SECRET', 'AWS_SECRET_ACCESS_KEY'])
+        ->onlyEditable(['APP_*', 'MAIL_*'])   // write-allowlist (empty = no restriction)
         ->useWriter(new MyAuditingWriter)
         ->registerAuditSink(new DatabaseAuditSink)
         ->registerDoctorRule(new RequireAppUrlRule)

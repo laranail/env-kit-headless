@@ -34,6 +34,15 @@ final class EnvKitServiceProvider extends PackageServiceProvider
         // The cipher driver registry (named drivers + extend()).
         $this->app->singleton(EnvKitManager::class);
 
+        // The redactor honours config('env-kit.hidden_keys') and is shared by the
+        // engine, the CLI (env:list), and the WebUI so masking is consistent everywhere.
+        $this->app->scoped(SecretRedactor::class, function ($app): SecretRedactor {
+            $maskKeys = $app['config']->get('env-kit.hidden_keys', []);
+            $maskKeys = is_array($maskKeys) ? array_values(array_filter($maskKeys, 'is_string')) : [];
+
+            return $maskKeys === [] ? new SecretRedactor : new SecretRedactor($maskKeys);
+        });
+
         // Bound `scoped` (resets per request) so the optional pending-session state
         // never leaks between requests on Octane. Config is read lazily at resolve
         // time, so it is always merged by then.
@@ -43,6 +52,9 @@ final class EnvKitServiceProvider extends PackageServiceProvider
 
             $protectedKeys = $config['protected_keys'] ?? [];
             $protectedKeys = is_array($protectedKeys) ? array_values(array_filter($protectedKeys, 'is_string')) : [];
+
+            $editableKeys = $config['editable_keys'] ?? [];
+            $editableKeys = is_array($editableKeys) ? array_values(array_filter($editableKeys, 'is_string')) : [];
 
             $retention = $config['backup_retention'] ?? 0;
             $retention = is_numeric($retention) ? (int) $retention : 0;
@@ -54,9 +66,6 @@ final class EnvKitServiceProvider extends PackageServiceProvider
             $auditEnabled = (bool) ($audit['enabled'] ?? true);
             $auditPath = is_string($audit['path'] ?? null) ? $audit['path'] : (string) $app->storagePath('env-kit/audit.log');
 
-            $maskKeys = $config['hidden_keys'] ?? [];
-            $maskKeys = is_array($maskKeys) ? array_values(array_filter($maskKeys, 'is_string')) : [];
-
             return new EnvKit(
                 path: (string) ($config['path'] ?? $app->basePath('.env')),
                 autoCommit: (bool) ($config['auto_commit'] ?? true),
@@ -64,6 +73,7 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 isProduction: $app->environment('production'),
                 protectProduction: (bool) ($config['protect_production'] ?? true),
                 protectedKeys: $protectedKeys,
+                editableKeys: $editableKeys,
                 backups: new BackupManager(
                     (string) ($config['backup_path'] ?? $app->storagePath('env-kit/backups')),
                     $retention,
@@ -72,7 +82,7 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 interpolator: new Interpolator(throwOnUndefined: $throwOnUndefined),
                 configurator: $app->make(EnvKitConfigurator::class),
                 auditSink: $auditEnabled ? new FileAuditSink($auditPath) : new NullAuditSink,
-                redactor: $maskKeys === [] ? new SecretRedactor : new SecretRedactor($maskKeys),
+                redactor: $app->make(SecretRedactor::class),
                 events: $app->make(Dispatcher::class),
             );
         });

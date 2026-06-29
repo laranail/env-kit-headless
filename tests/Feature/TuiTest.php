@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
 use Simtabi\Laranail\EnvKit\Headless\Facades\EnvKit;
 use Simtabi\Laranail\EnvKit\Headless\Tests\TestCase;
 
@@ -65,4 +66,24 @@ it('surfaces an engine error without crashing the loop', function () {
         ->assertExitCode(0);
 
     expect(EnvKit::has('1bad'))->toBeFalse();
+});
+
+it('persists multiple edits in production with --force-production', function () {
+    $this->bindEnv("A=1\nB=2\n", ['env-kit.auto_backup' => false]);
+    $this->app['env'] = 'production';
+    $this->app->forgetInstance(EnvKitInterface::class);
+
+    $this->artisan('env:edit', ['--force-production' => true])
+        ->expectsQuestion('Choose a key or action', 'A')
+        ->expectsQuestion('Edit [A]', 'Edit value')
+        ->expectsQuestion('New value for [A]', '10')
+        ->expectsQuestion('Choose a key or action', 'B')
+        ->expectsQuestion('Edit [B]', 'Edit value')
+        ->expectsQuestion('New value for [B]', '20')
+        ->expectsQuestion('Choose a key or action', 'Quit')
+        ->assertExitCode(0);
+
+    // Both edits persisted — the override is re-armed per action (not consumed once).
+    expect(EnvKit::get('A'))->toBe('10')
+        ->and(EnvKit::get('B'))->toBe('20');
 });

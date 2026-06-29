@@ -13,6 +13,7 @@ use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Guard;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\ValidateKeys;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Verify;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Write;
+use Simtabi\Laranail\EnvKit\Headless\Security\EditableKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\KeyValidator;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProductionGuard;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
@@ -47,12 +48,17 @@ final class CommitPipeline
         ?ProtectedKeys $protected = null,
         ?KeyValidator $keys = null,
         ?Audit $audit = null,
+        ?EditableKeys $editable = null,
     ): self {
         $writer ??= new AtomicEnvWriter;
 
         return new self(
             validate: new ValidateKeys($keys ?? new KeyValidator),
-            guard: new Guard($production ?? new ProductionGuard(false), $protected ?? new ProtectedKeys([])),
+            guard: new Guard(
+                $production ?? new ProductionGuard(false),
+                $protected ?? new ProtectedKeys([]),
+                $editable ?? new EditableKeys,
+            ),
             backup: new Backup($backups),
             write: new Write($writer),
             verify: new Verify($writer, new IntegrityVerifier),

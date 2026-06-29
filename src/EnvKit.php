@@ -6,6 +6,7 @@ namespace Simtabi\Laranail\EnvKit\Headless;
 
 use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Traits\Macroable;
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile;
@@ -20,9 +21,14 @@ use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\BackupNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Audit;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Backup;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Verify;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Write;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
+use Simtabi\Laranail\EnvKit\Headless\Security\EditableKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProductionGuard;
 use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\SecretRedactor;
@@ -30,6 +36,7 @@ use Simtabi\Laranail\EnvKit\Headless\Session\EditSession;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
 use Simtabi\Laranail\EnvKit\Headless\Writer\AtomicEnvWriter;
+use Simtabi\Laranail\EnvKit\Headless\Writer\IntegrityVerifier;
 
 /**
  * The bound root service — the single instance the `EnvKit` facade, constructor
@@ -48,7 +55,10 @@ final class EnvKit implements EnvKitInterface
 
     private bool $allowProduction = false;
 
-    /** @param list<string> $protectedKeys */
+    /**
+     * @param  list<string>  $protectedKeys
+     * @param  list<string>  $editableKeys
+     */
     public function __construct(
         private readonly string $path,
         private readonly bool $autoCommit,
@@ -56,6 +66,7 @@ final class EnvKit implements EnvKitInterface
         private readonly bool $isProduction,
         private readonly bool $protectProduction,
         private readonly array $protectedKeys,
+        private readonly array $editableKeys,
         private readonly BackupManager $backups,
         private readonly TypedAccessor $typed,
         private readonly Interpolator $interpolator,
@@ -273,7 +284,13 @@ final class EnvKit implements EnvKitInterface
         return $this->backups->backup($this->path);
     }
 
-    /** Restore a named backup over the current file (production-guarded, safety-backed-up). */
+    /**
+     * Restore a named backup over the current file. Runs the same Backup → Write →
+     * Verify → Audit pipeline as a normal commit (so it is atomic, rolls back on a
+     * verify failure, and is audited + broadcast), but skips key validation and the
+     * protected-key guard — a restore reinstates a known-good snapshot. The
+     * production guard still applies.
+     */
     public function restore(string $name): BackupFile
     {
         $backup = $this->backups->find($name);
@@ -281,18 +298,26 @@ final class EnvKit implements EnvKitInterface
             throw BackupNotFoundException::named($name);
         }
 
-        (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
-
-        if ($this->autoBackup && is_file($this->path)) {
-            $this->backups->backup($this->path);
-        }
-
         $contents = @file_get_contents($backup->path);
         if ($contents === false) {
             throw BackupNotFoundException::named($name);
         }
 
-        ($this->configurator->writer() ?? new AtomicEnvWriter)->write($this->path, $contents);
+        (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
+
+        $writer = $this->configurator->writer() ?? new AtomicEnvWriter;
+        $context = new CommitContext($this->path, EnvDocument::parse($contents), $this->document(), $this->allowProduction);
+
+        (new Pipeline)
+            ->send($context)
+            ->through([
+                new Backup($this->autoBackup ? $this->backups : null),
+                new Write($writer),
+                new Verify($writer, new IntegrityVerifier),
+                $this->auditPipe(),
+            ])
+            ->thenReturn();
+
         $this->allowProduction = false;
 
         return $backup;
@@ -415,6 +440,7 @@ final class EnvKit implements EnvKitInterface
             $this->isProduction,
             $this->protectProduction,
             $this->protectedKeys,
+            $this->editableKeys,
             $this->backups,
             $this->typed,
             $this->interpolator,
@@ -453,13 +479,18 @@ final class EnvKit implements EnvKitInterface
         return EditSession::open($this->path, pipeline: $this->pipeline());
     }
 
-    private function pipeline(): CommitPipeline
+    private function auditPipe(): Audit
     {
-        $audit = new Audit(
+        return new Audit(
             [$this->auditSink, ...$this->configurator->auditSinks()],
             $this->redactor,
             $this->events,
         );
+    }
+
+    private function pipeline(): CommitPipeline
+    {
+        $audit = $this->auditPipe();
 
         $pipeline = CommitPipeline::default(
             writer: $this->configurator->writer(),
@@ -467,6 +498,7 @@ final class EnvKit implements EnvKitInterface
             production: new ProductionGuard($this->isProduction, $this->protectProduction),
             protected: new ProtectedKeys([...$this->protectedKeys, ...$this->configurator->protectedKeys()]),
             audit: $audit,
+            editable: new EditableKeys([...$this->editableKeys, ...$this->configurator->editableKeys()]),
         );
 
         foreach ($this->configurator->mutationMiddleware() as $pipe) {
@@ -481,7 +513,16 @@ final class EnvKit implements EnvKitInterface
         $apply($this->session());
 
         if ($this->autoCommit) {
-            $this->save();
+            try {
+                $this->save();
+            } catch (\Throwable $e) {
+                // An immediate commit is atomic: a failed write (guard, validation,
+                // conflict, …) must not leave the staged change in the pending
+                // session, where it would poison the next operation.
+                $this->pending = null;
+                $this->allowProduction = false;
+                throw $e;
+            }
         }
 
         return $this;

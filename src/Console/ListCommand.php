@@ -20,10 +20,9 @@ final class ListCommand extends AbstractEnvCommand
     /** @var list<string> */
     protected array $commandAliases = ['env:list'];
 
-    public function handle(EnvKit $env): int
+    public function handle(EnvKit $env, SecretRedactor $redactor): int
     {
-        return $this->runSafely(function () use ($env): int {
-            $redactor = new SecretRedactor;
+        return $this->runSafely(function () use ($env, $redactor): int {
             $reveal = (bool) $this->option('reveal');
 
             foreach ($this->targetEnv($env)->all() as $key => $value) {

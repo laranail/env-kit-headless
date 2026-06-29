@@ -27,6 +27,9 @@ final class EnvKitConfigurator
     /** @var list<string> */
     private array $protectedKeys = [];
 
+    /** @var list<string> */
+    private array $editableKeys = [];
+
     private ?WriterInterface $writer = null;
 
     /** @var list<AuditSinkInterface> */
@@ -59,6 +62,27 @@ final class EnvKitConfigurator
         }
 
         return $this;
+    }
+
+    /**
+     * Restrict writable keys to an allowlist (supports wildcards, e.g. `APP_*`).
+     * Empty = no restriction. Merged with config('env-kit.editable_keys').
+     *
+     * @param  list<string>  $keys
+     */
+    public function onlyEditable(array $keys): self
+    {
+        foreach ($keys as $key) {
+            $this->editableKeys[] = $key;
+        }
+
+        return $this;
+    }
+
+    /** @return list<string> */
+    public function editableKeys(): array
+    {
+        return $this->editableKeys;
     }
 
     /** Swap the writer strategy (e.g. wrap it in a decorator). */

@@ -4,6 +4,12 @@ EnvKit can encrypt **individual values** so secrets are stored as ciphertext in 
 file. This is distinct from — and never a re-binding of — Laravel's whole-file
 `env:encrypt`.
 
+> ⚠️ **Only encrypt keys you read back through `EnvKit::getDecrypted()`.** Laravel's
+> own `env()` / `config()` read the raw `.env` file directly, so they would receive
+> the **ciphertext** — encrypting a key the application consumes that way (e.g.
+> `DB_PASSWORD`, `APP_KEY`) will break it. Reserve per-value encryption for secrets
+> your code fetches via EnvKit.
+
 ## Usage
 
 ```php

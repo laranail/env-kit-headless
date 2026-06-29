@@ -7,9 +7,15 @@ namespace Simtabi\Laranail\EnvKit\Headless\Testing;
 use Closure;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\Assert;
+use Simtabi\Laranail\EnvKit\Headless\Backup\BackupFile;
+use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
+use Simtabi\Laranail\EnvKit\Headless\Doctor\Diagnostic;
+use Simtabi\Laranail\EnvKit\Headless\Doctor\Doctor;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
+use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
 
@@ -197,6 +203,127 @@ final class EnvKitFake implements EnvKitInterface
     public function transaction(Closure $callback): mixed
     {
         return $callback($this);
+    }
+
+    // --- Extended surface (in-memory; matches the facade so faked code never errors) ---
+    //
+    // Fidelity note: the fake is a single in-memory store. `file()/on()` ignore file
+    // targeting; `allowProduction()/save()` are no-ops; `encrypt/decrypt/setEncrypted`
+    // store/return plaintext (no real crypto); `import()` skips pipeline validation;
+    // `backup/restore/backups` are stubs. Use the real engine for those behaviours.
+
+    public function file(string $path): static
+    {
+        return $this;
+    }
+
+    public function on(string $environment): static
+    {
+        return $this;
+    }
+
+    public function allowProduction(): static
+    {
+        return $this;
+    }
+
+    public function save(): static
+    {
+        return $this;
+    }
+
+    public function setEncrypted(string $key, string $value): static
+    {
+        $this->values[$key] = $value;
+        $this->recorded[] = ['action' => 'setEncrypted', 'key' => $key, 'value' => $value];
+
+        return $this;
+    }
+
+    public function getDecrypted(string $key, ?string $default = null): ?string
+    {
+        return $this->values[$key] ?? $default;
+    }
+
+    public function encrypt(string $key): static
+    {
+        $this->recorded[] = ['action' => 'encrypt', 'key' => $key, 'value' => null];
+
+        return $this;
+    }
+
+    public function decrypt(string $key): static
+    {
+        $this->recorded[] = ['action' => 'decrypt', 'key' => $key, 'value' => null];
+
+        return $this;
+    }
+
+    /** @return list<Diagnostic> */
+    public function inspect(): array
+    {
+        return Doctor::withDefaults()->inspect(EnvDocument::parse($this->raw()));
+    }
+
+    /** @return array{only_here: list<string>, only_there: list<string>, changed: list<string>} */
+    public function diff(string $against): array
+    {
+        $there = EnvDocument::parse(is_file($against) ? (string) @file_get_contents($against) : '')->toArray();
+
+        $changed = [];
+        foreach ($this->values as $key => $value) {
+            if (\array_key_exists($key, $there) && $there[$key] !== $value) {
+                $changed[] = $key;
+            }
+        }
+
+        return [
+            'only_here' => array_values(array_diff(array_keys($this->values), array_keys($there))),
+            'only_there' => array_values(array_diff(array_keys($there), array_keys($this->values))),
+            'changed' => $changed,
+        ];
+    }
+
+    public function export(string $format = 'json'): string
+    {
+        return Porter::withDefaults()->format($format)->export($this->values);
+    }
+
+    public function import(string $content, string $format = 'json'): static
+    {
+        foreach (Porter::withDefaults()->format($format)->import($content) as $key => $value) {
+            $this->set($key, $value);
+        }
+
+        return $this;
+    }
+
+    public function configure(): EnvKitConfigurator
+    {
+        return new EnvKitConfigurator;
+    }
+
+    public function backup(): ?BackupFile
+    {
+        if ($this->values === []) {
+            return null;
+        }
+
+        $this->recorded[] = ['action' => 'backup', 'key' => '', 'value' => null];
+
+        return new BackupFile('fake.bak', '', 0, 0);
+    }
+
+    public function backups(): BackupManager
+    {
+        return new BackupManager(sys_get_temp_dir());
+    }
+
+    public function restore(string $name): BackupFile
+    {
+        $this->recorded[] = ['action' => 'restore', 'key' => $name, 'value' => null];
+
+        return new BackupFile($name, '', 0, 0);
     }
 
     // --- Assertions ---------------------------------------------------------

@@ -7,8 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`editable_keys` allowlist** — now enforced on every surface (set/delete/rename of a
+  non-allowlisted key raises `NotEditableException`; CLI exit 3, WebUI 403). Configure at
+  runtime with `EnvKit::configure()->onlyEditable([...])`.
+
+### Fixed
+
+- **Secret masking honours `config('env-kit.hidden_keys')`** in `env:list` and the WebUI
+  (previously they used the built-in patterns only, so a custom-hidden key could leak).
+- **`restore()` is now audited** and dispatches `AfterWrite` — it runs the real
+  Backup → Write → Verify → Audit pipeline (atomic, rolls back on a verify failure).
+- **Immediate (`auto_commit`) writes are truly atomic on failure** — a failed commit no
+  longer leaves the staged change in the pending session to corrupt the next operation.
+- **TUI `--force-production`** now persists across multiple edits in one session (the
+  override is re-armed per action instead of being consumed once).
+- **`EnvKit::fake()` implements the full surface** (file/on/encrypt/getDecrypted/inspect/
+  diff/export/import/configure/backup/restore/…), so faked code never hits a missing method.
+
 ### Changed
 
+- Removed the dead `interpolation.resolve` config flag (use `EnvKit::interpolated()`).
+- Removed the misleading `suggest` entries (a DB audit sink / AWS KMS driver that were
+  never shipped — the `AuditSinkInterface` / `ValueCipherInterface` extension points remain).
 - Switched mutation testing from Infection (which has no Pest-suite support) to
   Pest's native `--mutate`; added a `composer mutate` script and a scheduled CI gate.
 
@@ -16,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Hardened the suite against mutation testing to **~87% covered-MSI** (engine-core
   classes individually 85–100%; the remaining survivors are equivalent or
-  tooling-unreachable mutants). Test count grew from 156 to 332.
+  tooling-unreachable mutants). Test count grew from 156 to 350+.
 
 ## [0.1.0] - 2026-06-28
 

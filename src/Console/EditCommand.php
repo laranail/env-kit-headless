@@ -36,8 +36,11 @@ final class EditCommand extends AbstractEnvCommand
 
     private const QUIT = 'Quit';
 
+    private bool $force = false;
+
     public function handle(EnvKit $env): int
     {
+        $this->force = (bool) $this->option('force-production');
         $target = $this->targetEnv($env);
 
         if ($this->laravel->environment('production')) {
@@ -59,10 +62,20 @@ final class EditCommand extends AbstractEnvCommand
         return self::EXIT_OK;
     }
 
+    /** Re-arm the production override before each mutation (each commit consumes it). */
+    private function allowing(EnvKit $env): EnvKit
+    {
+        if ($this->force) {
+            $env->allowProduction();
+        }
+
+        return $env;
+    }
+
     private function addKey(EnvKit $env): void
     {
         $key = trim(text('New key name', required: true));
-        $env->set($key, text("Value for {$key}"));
+        $this->allowing($env)->set($key, text("Value for {$key}"));
         $this->info("Set [{$key}].");
     }
 
@@ -78,21 +91,21 @@ final class EditCommand extends AbstractEnvCommand
 
     private function editValue(EnvKit $env, string $key): void
     {
-        $env->set($key, text("New value for [{$key}]", default: $env->getString($key) ?? ''));
+        $this->allowing($env)->set($key, text("New value for [{$key}]", default: $env->getString($key) ?? ''));
         $this->info("Updated [{$key}].");
     }
 
     private function renameKey(EnvKit $env, string $key): void
     {
         $to = trim(text("Rename [{$key}] to", required: true));
-        $env->rename($key, $to);
+        $this->allowing($env)->rename($key, $to);
         $this->info("Renamed [{$key}] to [{$to}].");
     }
 
     private function deleteKey(EnvKit $env, string $key): void
     {
         if (confirm("Delete [{$key}]?", default: false)) {
-            $env->forget($key);
+            $this->allowing($env)->forget($key);
             $this->info("Removed [{$key}].");
         }
     }
