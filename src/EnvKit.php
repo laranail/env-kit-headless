@@ -48,7 +48,9 @@ use Simtabi\Laranail\EnvKit\Headless\Security\ProtectedKeys;
 use Simtabi\Laranail\EnvKit\Headless\Security\SecretRedactor;
 use Simtabi\Laranail\EnvKit\Headless\Security\ValueSanitizer;
 use Simtabi\Laranail\EnvKit\Headless\Session\EditSession;
+use Simtabi\Laranail\EnvKit\Headless\Support\ExampleSync;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
+use Simtabi\Laranail\EnvKit\Headless\Support\SecretGenerator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
 use Simtabi\Laranail\EnvKit\Headless\Writer\AtomicEnvWriter;
 use Simtabi\Laranail\EnvKit\Headless\Writer\IntegrityVerifier;
@@ -533,6 +535,57 @@ final class EnvKit implements EnvKitInterface
             'only_there' => array_values(array_diff(array_keys($there), array_keys($here))),
             'changed' => $changed,
         ];
+    }
+
+    // --- .env.example sync --------------------------------------------------
+
+    /** The default `.env.example` path (sibling of the working .env). */
+    public function examplePath(): string
+    {
+        return \dirname($this->path).'/.env.example';
+    }
+
+    /**
+     * Keys defined in `.env.example` but missing from this `.env`.
+     *
+     * @return list<string>
+     */
+    public function missingFromExample(?string $examplePath = null): array
+    {
+        $example = $this->file($examplePath ?? $this->examplePath())->all();
+
+        return (new ExampleSync)->missing($this->all(), $example);
+    }
+
+    /** Add every key present in `.env.example` but missing here (with the example's value). */
+    public function syncFromExample(?string $examplePath = null): static
+    {
+        $example = $this->file($examplePath ?? $this->examplePath())->all();
+        $missing = (new ExampleSync)->missing($this->all(), $example);
+
+        if ($missing === []) {
+            return $this;
+        }
+
+        return $this->setMany(array_intersect_key($example, array_flip($missing)));
+    }
+
+    /**
+     * Produce a fresh secret value: `token`/`hex`/`base64` random tokens or an `app_key`.
+     * Returns the value (set it explicitly so the key policy + guards still apply).
+     *
+     * @param  array{bytes?: int}  $options
+     */
+    public function generate(string $type = 'token', array $options = []): string
+    {
+        $generator = new SecretGenerator;
+        $bytes = isset($options['bytes']) ? $options['bytes'] : 32;
+
+        return match ($type) {
+            'app_key', 'key' => $generator->appKey(),
+            'base64' => $generator->token($bytes, 'base64'),
+            default => $generator->token($bytes, 'hex'),
+        };
     }
 
     // --- Import / export ----------------------------------------------------

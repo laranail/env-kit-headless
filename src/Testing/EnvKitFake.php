@@ -21,6 +21,7 @@ use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
 use Simtabi\Laranail\EnvKit\Headless\Results\ValidationResult;
 use Simtabi\Laranail\EnvKit\Headless\Schema\EnvSchema;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
+use Simtabi\Laranail\EnvKit\Headless\Support\SecretGenerator;
 use Simtabi\Laranail\EnvKit\Headless\Support\TypedAccessor;
 
 /**
@@ -383,6 +384,19 @@ final class EnvKitFake implements EnvKitInterface
         }
 
         return $this;
+    }
+
+    /** @param array{bytes?: int} $options */
+    public function generate(string $type = 'token', array $options = []): string
+    {
+        $generator = new SecretGenerator;
+        $bytes = $options['bytes'] ?? 32;
+
+        return match ($type) {
+            'app_key', 'key' => $generator->appKey(),
+            'base64' => $generator->token($bytes, 'base64'),
+            default => $generator->token($bytes, 'hex'),
+        };
     }
 
     public function backup(?string $name = null): ?BackupFile
