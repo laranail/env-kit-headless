@@ -19,6 +19,10 @@ need to publish and edit the file to change behaviour.
 | `interpolation.on_undefined` | `'empty'` | `'empty'` substitutes `''`; `'throw'` raises a `ValidationException`. Call `EnvKit::interpolated()` to resolve `${VAR}` on read (`get()` always returns the raw at-rest value). |
 | `audit.enabled` | `true` | Record an audit trail of every commit. |
 | `audit.path` | `storage_path('env-kit/audit.log')` | JSON-lines file for the default audit sink. |
+| `audit.actor` | `null` | Static actor override for the audit trail + events; `null` resolves the authenticated user (else a console/system identity). See [Events](events.md#who-is-the-actor). |
+| `limits.max_value_length` | `32768` | Reject any written value over N bytes (`null` = unbounded). Defends against accidental/abusive huge writes. |
+| `limits.max_key_length` | `256` | Reserved bound on key length. |
+| `notifications.*` | _disabled_ | Opt-in operator alerts from lifecycle events — see [Notifications](notifications.md) for the full block. |
 | `encryption.driver` | `'laravel'` | The cipher driver for per-value encryption-at-rest. |
 
 ## Layered key policy
@@ -41,6 +45,11 @@ All three can be extended at runtime — see [Extending](extending.md):
 ```php
 EnvKit::configure()->protectKeys(['STRIPE_SECRET'])->onlyEditable(['APP_*', 'MAIL_*']);
 ```
+
+For finer, code-driven control — a pluggable authorization gate, Eloquent-style write
+observers, lifecycle events and alerts — these config lists are only the first layer. See
+**[Authorization](authorization.md)** (with a "which seam do I use?" table), **[Events](events.md)**,
+and **[Notifications](notifications.md)**.
 
 ## Production guard
 

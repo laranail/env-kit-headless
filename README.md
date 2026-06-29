@@ -32,10 +32,13 @@ makes those failure modes impossible by construction:
   and **auto-rollback** on mismatch. Optimistic concurrency rejects clobbering writes.
 - **Secret-safe** — secret-shaped values are redacted from logs, exceptions, audit
   records and events. Optional per-value **encryption-at-rest**.
-- **Guarded** — production-write protection and a layered protected/hidden key policy
-  on *every* surface (programmatic, CLI, TUI).
+- **Guarded** — production-write protection and a layered protected/hidden/editable key
+  policy on *every* surface (programmatic, CLI, TUI), plus a pluggable
+  [authorization gate + write observers](docs/authorization.md).
+- **Observable** — a full [lifecycle event set](docs/events.md) (redacted, actor-attributed)
+  and opt-in [operator notifications](docs/notifications.md).
 - **Open/Closed** — reshape the engine from your own service provider with zero source
-  edits (fluent DSL, Macroable, driver registry, pipeline middleware).
+  edits (fluent DSL, Macroable, driver registry, pipeline middleware, container tags).
 
 ## Install
 
