@@ -354,15 +354,15 @@ final class EnvKitFake implements EnvKitInterface
         return new EnvKitConfigurator;
     }
 
-    public function backup(): ?BackupFile
+    public function backup(?string $name = null): ?BackupFile
     {
         if ($this->values === []) {
             return null;
         }
 
-        $this->recorded[] = ['action' => 'backup', 'key' => '', 'value' => null];
+        $this->recorded[] = ['action' => 'backup', 'key' => $name ?? '', 'value' => null];
 
-        return new BackupFile('fake.bak', '', 0, 0);
+        return new BackupFile($name ?? 'fake.bak', '', 0, 0);
     }
 
     public function backups(): BackupManager

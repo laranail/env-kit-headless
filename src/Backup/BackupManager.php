@@ -18,8 +18,8 @@ final class BackupManager
         private readonly int $retain = 0,
     ) {}
 
-    /** Snapshot $envPath. Returns null when there is nothing to back up. */
-    public function backup(string $envPath): ?BackupFile
+    /** Snapshot $envPath, optionally with a human label. Returns null when there is nothing to back up. */
+    public function backup(string $envPath, ?string $label = null): ?BackupFile
     {
         if (! is_file($envPath)) {
             return null;
@@ -34,8 +34,9 @@ final class BackupManager
         // retention prunes the genuinely-oldest even for rapid same-second backups.
         // Strip the leading dot of `.env` so backups are not hidden dotfiles.
         $base = ltrim(basename($envPath), '.') ?: 'env';
+        $tag = is_string($label) && $label !== '' ? preg_replace('/[^A-Za-z0-9_-]+/', '-', $label).'.' : '';
         $micros = (int) (fmod(microtime(true), 1) * 1_000_000);
-        $name = sprintf('%s.%s-%06d-%s.bak', $base, date('Ymd-His'), $micros, bin2hex(random_bytes(2)));
+        $name = sprintf('%s.%s%s-%06d-%s.bak', $base, $tag, date('Ymd-His'), $micros, bin2hex(random_bytes(2)));
         $destination = $this->directory.'/'.$name;
 
         if (! @copy($envPath, $destination)) {
@@ -92,5 +93,28 @@ final class BackupManager
         foreach (array_slice($this->all(), $this->retain) as $old) {
             @unlink($old->path);
         }
+    }
+
+    /** Delete a backup by its file name. Returns true when a file was removed. */
+    public function delete(string $name): bool
+    {
+        $backup = $this->find($name);
+
+        return $backup !== null && @unlink($backup->path);
+    }
+
+    /** Delete backups older than $days. Returns the number removed. */
+    public function deleteOlderThan(int $days): int
+    {
+        $cutoff = time() - max(0, $days) * 86400;
+        $deleted = 0;
+
+        foreach ($this->all() as $backup) {
+            if ($backup->timestamp < $cutoff && @unlink($backup->path)) {
+                $deleted++;
+            }
+        }
+
+        return $deleted;
     }
 }

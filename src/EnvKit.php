@@ -345,9 +345,9 @@ final class EnvKit implements EnvKitInterface
     }
 
     /** Snapshot the current file. Returns null when there is nothing to back up. */
-    public function backup(): ?BackupFile
+    public function backup(?string $name = null): ?BackupFile
     {
-        $backup = $this->backups->backup($this->path);
+        $backup = $this->backups->backup($this->path, $name);
 
         if ($backup !== null) {
             $this->events?->dispatch(new BackupCreated($this->path, $backup, $this->configurator->resolveActor()));
