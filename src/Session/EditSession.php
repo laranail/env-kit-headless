@@ -9,6 +9,7 @@ use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\KeyNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
+use Simtabi\Laranail\EnvKit\Headless\Security\ValueSanitizer;
 
 /**
  * A transactional editing session over a single .env file.
@@ -31,6 +32,7 @@ final class EditSession
         private readonly string $fingerprint,
         private readonly ConflictDetector $conflicts,
         private readonly CommitPipeline $pipeline,
+        private readonly ValueSanitizer $sanitizer = new ValueSanitizer,
     ) {
         $this->working = $original;
     }
@@ -70,7 +72,9 @@ final class EditSession
 
     public function set(string $key, string $value, bool $export = false): self
     {
-        $this->working = $this->working->withValue($key, $value, $export);
+        // Sanitize at the single write chokepoint: NUL is rejected, other control
+        // characters stripped — covering programmatic, CLI and WebUI writes alike.
+        $this->working = $this->working->withValue($key, $this->sanitizer->sanitize($value, $key), $export);
 
         return $this;
     }

@@ -13,9 +13,10 @@ use Simtabi\Laranail\EnvKit\Headless\Exceptions\LockException;
  * then atomically rename over the target. A reader therefore only ever sees the
  * old file or the complete new one — never a half-written one.
  *
- * The mode of an existing target is preserved (never widened); a new file gets
- * 0644. NFS/Windows: rename-over-existing is atomic on POSIX local filesystems;
- * on other setups the LockManager (later slice) adds an advisory guard.
+ * The mode of an existing target is preserved (never widened); a NEW file gets
+ * 0600 (owner-only) because an .env holds plaintext secrets. NFS/Windows:
+ * rename-over-existing is atomic on POSIX local filesystems; on other setups the
+ * LockManager (later slice) adds an advisory guard.
  */
 final class AtomicEnvWriter implements WriterInterface
 {
@@ -75,7 +76,8 @@ final class AtomicEnvWriter implements WriterInterface
     {
         $mode = is_file($target) ? @fileperms($target) : false;
 
-        // Preserve the existing target's mode; never widen. New files get 0644.
-        @chmod($tmp, $mode !== false ? ($mode & 0777) : 0644);
+        // Preserve the existing target's mode; never widen. A new secrets file
+        // defaults to owner-only (0600).
+        @chmod($tmp, $mode !== false ? ($mode & 0777) : 0600);
     }
 }

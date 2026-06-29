@@ -40,7 +40,7 @@ it('preserves the mode of an existing file (never widens)', function () {
     expect(substr(sprintf('%o', fileperms($path)), -4))->toBe('0600');
 });
 
-it('creates the new file in the target directory with mode 0644', function () {
+it('creates the new file owner-only (0600 — it holds secrets)', function () {
     $path = envkit_temp();
     $before = scandir(dirname($path));
 
@@ -52,7 +52,7 @@ it('creates the new file in the target directory with mode 0644', function () {
 
     expect(is_file($path))->toBeTrue()
         ->and($after)->toBe([basename($path)])
-        ->and(substr(sprintf('%o', fileperms($path)), -4))->toBe('0644');
+        ->and(substr(sprintf('%o', fileperms($path)), -4))->toBe('0600');
 });
 
 it('preserves an existing mode that carries an execute bit (never widens)', function () {

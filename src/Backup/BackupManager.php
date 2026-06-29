@@ -25,7 +25,8 @@ final class BackupManager
             return null;
         }
 
-        if (! is_dir($this->directory) && ! @mkdir($this->directory, 0755, true) && ! is_dir($this->directory)) {
+        // 0700: backups hold full plaintext .env contents — keep the dir owner-only.
+        if (! is_dir($this->directory) && ! @mkdir($this->directory, 0700, true) && ! is_dir($this->directory)) {
             throw FileNotWritableException::for($this->directory);
         }
 
@@ -40,6 +41,8 @@ final class BackupManager
         if (! @copy($envPath, $destination)) {
             throw FileNotWritableException::for($destination);
         }
+
+        @chmod($destination, 0600); // owner-only: a backup is a plaintext secrets copy
 
         $this->prune();
 

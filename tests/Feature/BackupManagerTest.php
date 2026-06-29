@@ -138,15 +138,15 @@ it('creates the backup directory recursively across missing levels', function ()
         ->and(is_file($backup->path))->toBeTrue();
 });
 
-it('creates the backup directory with 0755 permissions (umask applied)', function () {
+it('creates the backup directory owner-only (0700 — backups are plaintext secrets)', function () {
     $path = envkit_temp();
     file_put_contents($path, "A=1\n");
     $dir = dirname($path).'/backups';
 
-    (new BackupManager($dir))->backup($path);
+    $backup = (new BackupManager($dir))->backup($path);
 
-    // mkdir() applies the process umask, so the on-disk bits are 0755 & ~umask.
-    expect(fileperms($dir) & 0o777)->toBe(0o755 & ~umask());
+    expect(fileperms($dir) & 0o777)->toBe(0o700)
+        ->and(fileperms($backup->path) & 0o777)->toBe(0o600);
 });
 
 it('derives the backup base name from the source file name', function () {

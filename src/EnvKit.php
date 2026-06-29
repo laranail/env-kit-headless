@@ -20,6 +20,7 @@ use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\BackupNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\InvalidEnvironmentException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
@@ -454,6 +455,11 @@ final class EnvKit implements EnvKitInterface
     /** Bind to a sibling `.env.{environment}` file. */
     public function on(string $environment): self
     {
+        // Guard against path traversal — the name becomes part of a filename.
+        if (preg_match('/^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/', $environment) !== 1) {
+            throw InvalidEnvironmentException::for($environment);
+        }
+
         return $this->file(\dirname($this->path).'/.env.'.$environment);
     }
 
