@@ -33,12 +33,13 @@ final class EditSession
         private readonly ConflictDetector $conflicts,
         private readonly CommitPipeline $pipeline,
         private readonly ValueSanitizer $sanitizer = new ValueSanitizer,
+        private readonly ?string $actor = null,
     ) {
         $this->working = $original;
     }
 
     /** Open a session for $path (an absent file starts as an empty document). */
-    public static function open(string $path, ?WriterInterface $writer = null, ?CommitPipeline $pipeline = null): self
+    public static function open(string $path, ?WriterInterface $writer = null, ?CommitPipeline $pipeline = null, ?string $actor = null): self
     {
         $raw = is_file($path) ? (string) @file_get_contents($path) : '';
         $conflicts = new ConflictDetector;
@@ -49,6 +50,7 @@ final class EditSession
             fingerprint: $conflicts->fingerprint($path),
             conflicts: $conflicts,
             pipeline: $pipeline ?? CommitPipeline::default($writer),
+            actor: $actor,
         );
     }
 
@@ -161,6 +163,7 @@ final class EditSession
             document: $this->working,
             original: $this->original,
             allowProduction: $this->allowProduction,
+            actor: $this->actor,
         ));
 
         return $this;

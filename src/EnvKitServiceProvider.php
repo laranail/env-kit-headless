@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Simtabi\Laranail\EnvKit\Headless;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Events\Dispatcher;
 use Simtabi\Laranail\EnvKit\Headless\Audit\FileAuditSink;
 use Simtabi\Laranail\EnvKit\Headless\Audit\NullAuditSink;
@@ -92,11 +93,31 @@ final class EnvKitServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        $configurator = $this->app->make(EnvKitConfigurator::class);
+
         // Seed the default cipher lazily so the Encrypter (and APP_KEY) is only
         // touched when encryption is actually used.
-        $this->app->make(EnvKitConfigurator::class)->resolveCipherUsing(
+        $configurator->resolveCipherUsing(
             fn () => $this->app->make(EnvKitManager::class)->cipher(),
         );
+
+        // Seed the default actor resolver: a config override, else the authenticated
+        // user, else a console/system identity. Keeps auth()/app() in the provider.
+        $configurator->resolveActorUsing(function (): ?string {
+            $override = config('env-kit.audit.actor');
+            if (is_string($override) && $override !== '') {
+                return $override;
+            }
+
+            $user = auth()->user();
+            if ($user instanceof Authenticatable) {
+                $id = $user->getAuthIdentifier();
+
+                return is_scalar($id) ? (string) $id : 'user';
+            }
+
+            return $this->app->runningInConsole() ? ((get_current_user() ?: 'cli').'@cli') : null;
+        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([

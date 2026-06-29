@@ -307,7 +307,14 @@ final class EnvKit implements EnvKitInterface
         (new ProductionGuard($this->isProduction, $this->protectProduction))->guard($this->allowProduction);
 
         $writer = $this->configurator->writer() ?? new AtomicEnvWriter;
-        $context = new CommitContext($this->path, EnvDocument::parse($contents), $this->document(), $this->allowProduction);
+        $context = new CommitContext(
+            $this->path,
+            EnvDocument::parse($contents),
+            $this->document(),
+            $this->allowProduction,
+            actor: $this->configurator->resolveActor(),
+            operation: 'restore',
+        );
 
         (new Pipeline)
             ->send($context)
@@ -482,7 +489,7 @@ final class EnvKit implements EnvKitInterface
 
     private function newSession(): EditSession
     {
-        return EditSession::open($this->path, pipeline: $this->pipeline());
+        return EditSession::open($this->path, pipeline: $this->pipeline(), actor: $this->configurator->resolveActor());
     }
 
     private function auditPipe(): Audit

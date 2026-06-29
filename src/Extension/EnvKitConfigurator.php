@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Simtabi\Laranail\EnvKit\Headless\Extension;
 
 use Closure;
+use Simtabi\Laranail\EnvKit\Headless\Audit\CallbackActorResolver;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\ActorResolverInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\DoctorRuleInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\PortFormatInterface;
@@ -45,6 +47,29 @@ final class EnvKitConfigurator
 
     /** @var list<PortFormatInterface> */
     private array $portFormats = [];
+
+    private ?ActorResolverInterface $actorResolver = null;
+
+    /**
+     * Resolve "who" performs each commit (audit trail + events). Accepts a closure
+     * `fn (): ?string` or an {@see ActorResolverInterface}.
+     *
+     * @param  Closure(): ?string|ActorResolverInterface  $resolver
+     */
+    public function resolveActorUsing(Closure|ActorResolverInterface $resolver): self
+    {
+        $this->actorResolver = $resolver instanceof ActorResolverInterface
+            ? $resolver
+            : new CallbackActorResolver($resolver);
+
+        return $this;
+    }
+
+    /** The resolved actor for the current commit (null when no resolver is registered). */
+    public function resolveActor(): ?string
+    {
+        return $this->actorResolver?->resolve();
+    }
 
     /** Append a pipe to the commit pipeline (runs after the built-in guards, before write). */
     public function pushMutationMiddleware(object $pipe): self

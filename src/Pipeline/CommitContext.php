@@ -17,6 +17,8 @@ final class CommitContext
         public readonly EnvDocument $document,
         public readonly EnvDocument $original,
         public readonly bool $allowProduction = false,
+        public readonly ?string $actor = null,
+        public readonly string $operation = 'write',
     ) {}
 
     /**

@@ -119,7 +119,7 @@ it('creates the audit directory and writes a newline-terminated, slash-unescaped
 it('records redacted old and new values to every sink and returns the piped result', function () {
     $original = EnvDocument::parse("MOD=oldval\nDB_PASSWORD=oldsecret\n");
     $document = $original->withValue('MOD', 'newval')->withValue('DB_PASSWORD', 'newsecret');
-    $context = new CommitContext('/srv/app/.env', $document, $original);
+    $context = new CommitContext('/srv/app/.env', $document, $original, actor: 'tester');
 
     $sink = new class implements AuditSinkInterface
     {
@@ -132,7 +132,7 @@ it('records redacted old and new values to every sink and returns the piped resu
     };
 
     // No dispatcher passed: the null-safe dispatch must be skipped, not blow up.
-    $pipe = new Audit([$sink], new SecretRedactor, null, 'tester');
+    $pipe = new Audit([$sink], new SecretRedactor, null);
 
     $result = $pipe->handle($context, fn (CommitContext $c): string => 'piped');
 

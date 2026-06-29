@@ -24,7 +24,6 @@ final class Audit
         private readonly array $sinks,
         private readonly SecretRedactor $redactor,
         private readonly ?Dispatcher $events = null,
-        private readonly ?string $actor = null,
     ) {}
 
     public function handle(CommitContext $context, Closure $next): mixed
@@ -33,7 +32,7 @@ final class Audit
 
         $changes = $this->redactedChanges($context);
 
-        $event = new AuditEvent($context->path, $changes, $this->actor, time());
+        $event = new AuditEvent($context->path, $changes, $context->actor, time());
         foreach ($this->sinks as $sink) {
             $sink->record($event);
         }
