@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-29
+
 ### Added
 
 - **`editable_keys` allowlist** — now enforced on every surface (set/delete/rename of a
