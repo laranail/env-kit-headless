@@ -6,11 +6,14 @@ namespace Simtabi\Laranail\EnvKit\Headless\Extension;
 
 use Closure;
 use Simtabi\Laranail\EnvKit\Headless\Audit\CallbackActorResolver;
+use Simtabi\Laranail\EnvKit\Headless\Authorization\DefaultUpdateGate;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\ActorResolverInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\AuditSinkInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\DoctorRuleInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\PortFormatInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\UpdateGateInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\ValueCipherInterface;
+use Simtabi\Laranail\EnvKit\Headless\Contracts\WriteObserverInterface;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\WriterInterface;
 use Simtabi\Laranail\EnvKit\Headless\EnvKit;
 
@@ -49,6 +52,71 @@ final class EnvKitConfigurator
     private array $portFormats = [];
 
     private ?ActorResolverInterface $actorResolver = null;
+
+    private ?UpdateGateInterface $updateGate = null;
+
+    private ?UpdateGateInterface $defaultUpdateGate = null;
+
+    /** @var list<Closure(UpdateGateInterface): UpdateGateInterface> */
+    private array $gateDecorators = [];
+
+    /** @var list<WriteObserverInterface> */
+    private array $observers = [];
+
+    /** Replace the update-authorization gate outright (drops the default + ability bridge). */
+    public function useUpdateGate(UpdateGateInterface $gate): self
+    {
+        $this->updateGate = $gate;
+
+        return $this;
+    }
+
+    /**
+     * Wrap the current update gate (composes; the last decorator registered is the
+     * OUTERMOST wrapper, like the container's extend()).
+     *
+     * @param  Closure(UpdateGateInterface): UpdateGateInterface  $decorator
+     */
+    public function decorateUpdateGate(Closure $decorator): self
+    {
+        $this->gateDecorators[] = $decorator;
+
+        return $this;
+    }
+
+    /** Provider-seeded shipped default (env-aware + Laravel-ability bridge). */
+    public function setDefaultUpdateGate(UpdateGateInterface $gate): self
+    {
+        $this->defaultUpdateGate = $gate;
+
+        return $this;
+    }
+
+    /** The effective gate: consumer replacement ?? provider default ?? bare default, then decorators. */
+    public function updateGate(): UpdateGateInterface
+    {
+        $gate = $this->updateGate ?? $this->defaultUpdateGate ?? new DefaultUpdateGate;
+
+        foreach ($this->gateDecorators as $decorator) {
+            $gate = $decorator($gate);
+        }
+
+        return $gate;
+    }
+
+    /** Register a write observer (Eloquent-style lifecycle hooks; compose in order). */
+    public function observe(WriteObserverInterface $observer): self
+    {
+        $this->observers[] = $observer;
+
+        return $this;
+    }
+
+    /** @return list<WriteObserverInterface> */
+    public function observers(): array
+    {
+        return $this->observers;
+    }
 
     /**
      * Resolve "who" performs each commit (audit trail + events). Accepts a closure

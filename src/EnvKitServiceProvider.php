@@ -8,6 +8,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Events\Dispatcher;
 use Simtabi\Laranail\EnvKit\Headless\Audit\FileAuditSink;
 use Simtabi\Laranail\EnvKit\Headless\Audit\NullAuditSink;
+use Simtabi\Laranail\EnvKit\Headless\Authorization\DefaultUpdateGate;
+use Simtabi\Laranail\EnvKit\Headless\Authorization\LaravelAbilityGate;
 use Simtabi\Laranail\EnvKit\Headless\Backup\BackupManager;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
@@ -118,6 +120,10 @@ final class EnvKitServiceProvider extends PackageServiceProvider
 
             return $this->app->runningInConsole() ? ((get_current_user() ?: 'cli').'@cli') : null;
         });
+
+        // The shipped update gate: env-aware default, bridged to a Laravel `env-kit.update`
+        // ability when the consumer defines one. Consumers swap/decorate via configure().
+        $configurator->setDefaultUpdateGate(new LaravelAbilityGate(new DefaultUpdateGate));
 
         if ($this->app->runningInConsole()) {
             $this->commands([

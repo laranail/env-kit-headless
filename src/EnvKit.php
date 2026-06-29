@@ -21,15 +21,20 @@ use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
 use Simtabi\Laranail\EnvKit\Headless\Events\AfterRestore;
 use Simtabi\Laranail\EnvKit\Headless\Events\BackupCreated;
 use Simtabi\Laranail\EnvKit\Headless\Events\BeforeRestore;
+use Simtabi\Laranail\EnvKit\Headless\Events\WriteRejected;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\BackupNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\EnvKitException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\IntegrityException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\InvalidEnvironmentException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Audit;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Authorize;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Backup;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Notify;
+use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Observe;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Verify;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\Pipes\Write;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
@@ -329,17 +334,26 @@ final class EnvKit implements EnvKitInterface
             operation: 'restore',
         );
 
+        $observers = $this->configurator->observers();
+
         try {
             (new Pipeline)
                 ->send($context)
-                ->through([
+                ->through(array_values(array_filter([
+                    new Authorize($this->configurator->updateGate(), $this->isProduction),
+                    $observers === [] ? null : new Observe($observers, $this->isProduction),
                     new Notify($this->redactor, $this->events),
                     new Backup($this->autoBackup ? $this->backups : null, $this->events),
                     new Write($writer),
                     new Verify($writer, new IntegrityVerifier, $this->events),
                     $this->auditPipe(),
-                ])
+                ])))
                 ->thenReturn();
+        } catch (IntegrityException $e) {
+            throw $e; // a post-write rollback already emitted WriteRolledBack
+        } catch (EnvKitException $e) {
+            $this->events?->dispatch(new WriteRejected($this->path, $e->envKitReason(), $context->changedKeys(), $actor));
+            throw $e;
         } finally {
             // Reset the override even if the restore pipeline throws (no leak to the next op).
             $this->allowProduction = false;
@@ -534,7 +548,12 @@ final class EnvKit implements EnvKitInterface
             events: $this->events,
         );
 
+        $pipeline->authorize(new Authorize($this->configurator->updateGate(), $this->isProduction));
         $pipeline->beforeWrite(new Notify($this->redactor, $this->events));
+
+        if (($observers = $this->configurator->observers()) !== []) {
+            $pipeline->observe(new Observe($observers, $this->isProduction));
+        }
 
         foreach ($this->configurator->mutationMiddleware() as $pipe) {
             $pipeline->push($pipe);
