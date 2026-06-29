@@ -34,7 +34,7 @@ jobs:
 
       # Packagist updates itself via its GitHub webhook, so no publish step is needed.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: release-notes.md
           generate_release_notes: true
