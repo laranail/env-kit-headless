@@ -14,6 +14,7 @@ use Simtabi\Laranail\EnvKit\Headless\Doctor\Diagnostic;
 use Simtabi\Laranail\EnvKit\Headless\Doctor\Doctor;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\KeyNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Porter;
 use Simtabi\Laranail\EnvKit\Headless\Support\Interpolator;
@@ -198,6 +199,56 @@ final class EnvKitFake implements EnvKitInterface
         }
 
         return $this;
+    }
+
+    public function update(string $key, string $value): static
+    {
+        if ($this->missing($key)) {
+            throw KeyNotFoundException::for($key);
+        }
+
+        return $this->set($key, $value);
+    }
+
+    public function setOrUpdate(string $key, string $value): static
+    {
+        return $this->set($key, $value);
+    }
+
+    public function setIfMissing(string $key, string $value): static
+    {
+        return $this->missing($key) ? $this->set($key, $value) : $this;
+    }
+
+    /** @param list<string> $keys */
+    public function forgetMany(array $keys): static
+    {
+        foreach ($keys as $key) {
+            $this->forget($key);
+        }
+
+        return $this;
+    }
+
+    public function setExport(string $key, bool $export = true): static
+    {
+        if ($this->missing($key)) {
+            throw KeyNotFoundException::for($key);
+        }
+        $this->recorded[] = ['action' => 'setExport', 'key' => $key, 'value' => $export ? '1' : '0'];
+
+        return $this;
+    }
+
+    public function entry(string $key): ?Setter
+    {
+        foreach (EnvDocument::parse($this->raw())->setters() as $setter) {
+            if ($setter->key === $key) {
+                return $setter;
+            }
+        }
+
+        return null;
     }
 
     public function transaction(Closure $callback): mixed

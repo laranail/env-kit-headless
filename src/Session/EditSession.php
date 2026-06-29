@@ -97,6 +97,13 @@ final class EditSession
         return $this;
     }
 
+    public function setExport(string $key, bool $export): self
+    {
+        $this->working = $this->working->withExport($key, $export);
+
+        return $this;
+    }
+
     public function rename(string $from, string $to): self
     {
         if (! $this->working->has($from)) {

@@ -27,6 +27,7 @@ use Simtabi\Laranail\EnvKit\Headless\Exceptions\EncryptionException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\EnvKitException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\IntegrityException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\InvalidEnvironmentException;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\KeyNotFoundException;
 use Simtabi\Laranail\EnvKit\Headless\Extension\EnvKitConfigurator;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitContext;
 use Simtabi\Laranail\EnvKit\Headless\Pipeline\CommitPipeline;
@@ -204,6 +205,18 @@ final class EnvKit implements EnvKitInterface
         return Collection::make($this->document()->setters());
     }
 
+    /** A single key's setter (value/export/comment metadata), or null if absent. */
+    public function entry(string $key): ?Setter
+    {
+        foreach ($this->document()->setters() as $setter) {
+            if ($setter->key === $key) {
+                return $setter;
+            }
+        }
+
+        return null;
+    }
+
     // --- Writes -------------------------------------------------------------
 
     /** @param array{export?: bool} $options */
@@ -230,6 +243,48 @@ final class EnvKit implements EnvKitInterface
                 $s->set($key, $value);
             }
         });
+    }
+
+    /** Set an EXISTING key; throws {@see KeyNotFoundException} when it is absent. */
+    public function update(string $key, string $value): static
+    {
+        if ($this->missing($key)) {
+            throw KeyNotFoundException::for($key);
+        }
+
+        return $this->set($key, $value);
+    }
+
+    /** Explicit upsert — set whether or not the key exists (semantic alias of set()). */
+    public function setOrUpdate(string $key, string $value): static
+    {
+        return $this->set($key, $value);
+    }
+
+    /** Set only when the key is absent; a no-op (no write/backup/audit) if it already exists. */
+    public function setIfMissing(string $key, string $value): static
+    {
+        return $this->missing($key) ? $this->set($key, $value) : $this;
+    }
+
+    /** @param list<string> $keys */
+    public function forgetMany(array $keys): static
+    {
+        return $this->mutate(function (EditSession $s) use ($keys): void {
+            foreach ($keys as $key) {
+                $s->forget($key);
+            }
+        });
+    }
+
+    /** Set or clear the `export ` prefix on an existing key (value unchanged). */
+    public function setExport(string $key, bool $export = true): static
+    {
+        if ($this->missing($key)) {
+            throw KeyNotFoundException::for($key);
+        }
+
+        return $this->mutate(fn (EditSession $s) => $s->setExport($key, $export));
     }
 
     /** Run a batch of mutations and commit them as ONE transaction. */

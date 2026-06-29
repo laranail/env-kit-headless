@@ -119,6 +119,21 @@ final class EnvDocument
         return new self($entries, $this->eol, $this->hasBom, $this->trailingNewline);
     }
 
+    /** Explicitly set or clear the `export ` prefix on an existing key (value unchanged). */
+    public function withExport(string $key, bool $export): self
+    {
+        $entries = $this->entries;
+
+        foreach ($entries as $i => $entry) {
+            if ($entry instanceof Setter && $entry->key === $key) {
+                $entries[$i] = new Setter($key, $entry->value, $export, $entry->alwaysQuote);
+                break;
+            }
+        }
+
+        return new self($entries, $this->eol, $this->hasBom, $this->trailingNewline);
+    }
+
     /** Remove a key (and only the setter line), returning a new document. */
     public function without(string $key): self
     {
