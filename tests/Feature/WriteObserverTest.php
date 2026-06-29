@@ -11,6 +11,19 @@ use Simtabi\Laranail\EnvKit\Headless\Tests\TestCase;
 
 uses(TestCase::class);
 
+it('a bare AbstractWriteObserver is a no-op across every hook (write + restore)', function () {
+    $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false]);
+    app(EnvKitConfigurator::class)->observe(new class extends AbstractWriteObserver {});
+
+    $backup = EnvKit::backup();
+    EnvKit::set('B', '2'); // saving + creating + saved
+    EnvKit::set('A', '9'); // updating
+    EnvKit::forget('B');   // deleting
+    EnvKit::restore($backup->name); // restoring + restored
+
+    expect(EnvKit::get('A'))->toBe('1'); // restored to the snapshot
+});
+
 it('lets an observer veto a write via saving()', function () {
     $this->bindEnv("A=1\n", ['env-kit.auto_backup' => false]);
     app(EnvKitConfigurator::class)->observe(new class extends AbstractWriteObserver

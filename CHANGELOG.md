@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests
+
+- Expanded edge-case/regression coverage (notification mail rendering, atomic-writer +
+  integrity-verifier failure/rollback paths, cipher passthrough + corruption, the no-op
+  observer base, the base-exception reason) — line coverage ~95%.
+
 ## [0.2.1] - 2026-06-29
 
 ### Fixed
