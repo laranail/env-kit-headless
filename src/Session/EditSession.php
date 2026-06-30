@@ -104,6 +104,20 @@ final class EditSession
         return $this;
     }
 
+    public function addComment(string $text): self
+    {
+        $this->working = $this->working->withComment($text);
+
+        return $this;
+    }
+
+    public function addEmptyLine(): self
+    {
+        $this->working = $this->working->withEmptyLine();
+
+        return $this;
+    }
+
     public function rename(string $from, string $to): self
     {
         if (! $this->working->has($from)) {

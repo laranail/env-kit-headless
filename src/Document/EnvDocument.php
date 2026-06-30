@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Simtabi\Laranail\EnvKit\Headless\Document;
 
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EntryInterface;
+use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Comment;
+use Simtabi\Laranail\EnvKit\Headless\Document\Entry\EmptyLine;
 use Simtabi\Laranail\EnvKit\Headless\Document\Entry\Setter;
 
 /**
@@ -130,6 +132,24 @@ final class EnvDocument
                 break;
             }
         }
+
+        return new self($entries, $this->eol, $this->hasBom, $this->trailingNewline);
+    }
+
+    /** Append a comment line (`# text`). */
+    public function withComment(string $text): self
+    {
+        $entries = $this->entries;
+        $entries[] = new Comment($text);
+
+        return new self($entries, $this->eol, $this->hasBom, $this->trailingNewline);
+    }
+
+    /** Append a blank line. */
+    public function withEmptyLine(): self
+    {
+        $entries = $this->entries;
+        $entries[] = new EmptyLine;
 
         return new self($entries, $this->eol, $this->hasBom, $this->trailingNewline);
     }

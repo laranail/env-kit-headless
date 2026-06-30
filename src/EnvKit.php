@@ -292,6 +292,69 @@ final class EnvKit implements EnvKitInterface
         return $this->mutate(fn (EditSession $s) => $s->setExport($key, $export));
     }
 
+    /** Append a comment line (`# text`) to the file. */
+    public function addComment(string $text): static
+    {
+        return $this->mutate(fn (EditSession $s) => $s->addComment($text));
+    }
+
+    /** Append a blank line to the file. */
+    public function addEmptyLine(): static
+    {
+        return $this->mutate(fn (EditSession $s) => $s->addEmptyLine());
+    }
+
+    // --- jackiedo/dotenv-editor compatibility aliases -----------------------
+
+    public function getValue(string $key, mixed $default = null): mixed
+    {
+        return $this->get($key, $default);
+    }
+
+    public function setKey(string $key, string $value): static
+    {
+        return $this->set($key, $value);
+    }
+
+    /** @param array<string, string> $pairs */
+    public function setKeys(array $pairs): static
+    {
+        return $this->setMany($pairs);
+    }
+
+    public function deleteKey(string $key): static
+    {
+        return $this->forget($key);
+    }
+
+    /** @param list<string> $keys */
+    public function deleteKeys(array $keys): static
+    {
+        return $this->forgetMany($keys);
+    }
+
+    public function keyExists(string $key): bool
+    {
+        return $this->has($key);
+    }
+
+    /** @return list<string> */
+    public function getKeys(): array
+    {
+        return $this->keys();
+    }
+
+    /** @return Collection<int, Setter> */
+    public function getEntries(): Collection
+    {
+        return $this->entries();
+    }
+
+    public function getContent(): string
+    {
+        return $this->raw();
+    }
+
     /** Run a batch of mutations and commit them as ONE transaction. */
     public function transaction(Closure $callback): mixed
     {
