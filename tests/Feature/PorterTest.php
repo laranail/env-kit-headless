@@ -65,7 +65,7 @@ it('fails env:import when the source is missing (exit 2)', function () {
 it('rejects an unknown format', function () {
     $this->bindEnv("A=1\n");
 
-    expect(fn () => EnvKit::export('yaml'))->toThrow(PortException::class);
+    expect(fn () => EnvKit::export('xml'))->toThrow(PortException::class);
 });
 
 it('supports a custom format registered via configure()', function () {
@@ -259,8 +259,8 @@ it('porter: names reflects registration order', function () {
     expect($porter->names())->toBe(['csv', 'json']);
 });
 
-it('porter: withDefaults registers json and csv', function () {
-    expect(Porter::withDefaults()->names())->toBe(['json', 'csv'])
+it('porter: withDefaults registers json, csv, dotenv and yaml', function () {
+    expect(Porter::withDefaults()->names())->toBe(['json', 'csv', 'dotenv', 'yaml'])
         ->and(Porter::withDefaults()->format('json'))->toBeInstanceOf(JsonFormat::class)
         ->and(Porter::withDefaults()->format('csv'))->toBeInstanceOf(CsvFormat::class);
 });
@@ -284,5 +284,5 @@ it('porter: withDefaults appends consumer-registered extras', function () {
         }
     };
 
-    expect(Porter::withDefaults($extra)->names())->toBe(['json', 'csv', 'lines']);
+    expect(Porter::withDefaults($extra)->names())->toBe(['json', 'csv', 'dotenv', 'yaml', 'lines']);
 });
