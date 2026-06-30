@@ -38,7 +38,8 @@ makes those failure modes impossible by construction:
   with its `.env.example` via `env:sync` / `env:check`.
 - **Guarded** — production-write protection and a layered protected/hidden/editable key
   policy on *every* surface (programmatic, CLI, TUI), plus a pluggable
-  [authorization gate + write observers](docs/authorization.md).
+  [authorization gate + write observers](docs/authorization.md). Every CLI command
+  prints a `PRODUCTION …` banner when `APP_ENV=production`.
 - **Observable** — a full [lifecycle event set](docs/events.md) (redacted, actor-attributed)
   and opt-in [operator notifications](docs/notifications.md).
 - **Open/Closed** — reshape the engine from your own service provider with zero source
@@ -69,13 +70,18 @@ EnvKit::transaction(fn ($s) => $s->set('A', '1')->set('B', '2')); // one commit
 $value = env_kit('APP_NAME', 'Laravel');
 ```
 
-**CLI** — 21 commands under `laranail::env-kit-headless.*`, each with a short `env:*` alias:
+Migrating off `jackiedo/dotenv-editor`? EnvKit exposes the jackiedo-named aliases
+(`getValue`/`setKey`/`deleteKey`/…) and a drop-in `Compat\DotenvEditor` facade, so
+existing call sites move over with a class swap — see
+**[Programmatic API](docs/tools/programmatic-api.md)**.
+
+**CLI** — 23 commands under `laranail::env-kit-headless.*`, each with a short `env:*` alias:
 
 ```bash
 php artisan env:set MAIL_HOST=smtp.acme.test
 php artisan env:get APP_NAME
 php artisan env:doctor          # health-check rules
-php artisan env:export --format=json --output=env.json
+php artisan env:export --format=json --output=env.json   # also csv / dotenv / yaml
 ```
 
 **TUI** — an interactive editor on `laravel/prompts`:
@@ -114,12 +120,12 @@ Full reference: **[docs/configuration.md](docs/configuration.md)**.
 | [Notifications](docs/notifications.md) | Opt-in operator alerts, channels, testing |
 | [Release](docs/release.md) | Versioning, the release workflow, trusted publishing |
 | [Programmatic API](docs/tools/programmatic-api.md) | Reads, typed getters, the three write modes, schema, `.env.example` sync, secret generators, `EnvKit::fake()` |
-| [CLI](docs/tools/cli.md) | All 21 commands, exit-code contract, `--file` / `--force-production` |
+| [CLI](docs/tools/cli.md) | All 23 commands, exit-code contract, `--file` / `--force-production` |
 | [Schema](docs/tools/schema.md) | Declarative validation, the rule set, `MatchesEnvSchema` for FormRequests |
 | [TUI](docs/tools/tui.md) | The interactive `env:edit` editor |
 | [Encryption](docs/tools/encryption.md) | Per-value encryption-at-rest, cipher drivers |
 | [Doctor](docs/tools/doctor.md) | Health-check rules and writing your own |
-| [Import / Export](docs/tools/import-export.md) | The Porter, JSON & CSV formats, custom formats |
+| [Import / Export](docs/tools/import-export.md) | The Porter, JSON/CSV/dotenv/YAML formats, custom formats |
 | [Audit & Events](docs/tools/audit-events.md) | Audit sinks, the `AfterWrite` event, redaction |
 
 The rendered docs live at

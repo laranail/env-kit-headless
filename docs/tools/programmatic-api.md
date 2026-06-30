@@ -61,6 +61,16 @@ EnvKit::forgetMany(['OLD_A', 'OLD_B']);         // remove several keys in one co
 EnvKit::setExport('PATH_BIN', true);            // set/clear `export ` on an existing key (KeyNotFoundException if absent)
 ```
 
+### Comments & blank lines
+
+Author the file's structure, not just its keys — both append through the same
+guarded commit path:
+
+```php
+EnvKit::addComment('Mailer settings');   // appends a `# Mailer settings` line
+EnvKit::addEmptyLine();                  // appends a blank line
+```
+
 ## Three persistence modes
 
 Gated by `config('env-kit.auto_commit')`:
@@ -162,6 +172,36 @@ $service->run();
 $fake->assertSet('NEW_KEY');
 $fake->assertForgotten('OLD_KEY');
 ```
+
+## Migrating from `jackiedo/dotenv-editor`
+
+EnvKit ships jackiedo-named aliases so an existing codebase can move over with a
+class swap and keep its call sites intact. Each is a thin wrapper over the native
+method, so the guards, atomic write and audit trail still apply:
+
+| jackiedo alias | Native equivalent |
+|----------------|-------------------|
+| `getValue($key, $default)` | `get()` |
+| `setKey($key, $value)` | `set()` |
+| `setKeys($pairs)` | `setMany()` |
+| `deleteKey($key)` | `forget()` |
+| `deleteKeys($keys)` | `forgetMany()` |
+| `keyExists($key)` | `has()` |
+| `getKeys()` | `keys()` |
+| `getEntries()` | `entries()` |
+| `getContent()` | `raw()` |
+
+For the smallest possible diff, swap the facade too — `Compat\DotenvEditor`
+resolves the *same* bound EnvKit instance under a jackiedo-style name:
+
+```php
+use Simtabi\Laranail\EnvKit\Headless\Compat\DotenvEditor;
+
+DotenvEditor::setKey('MAIL_HOST', 'smtp.acme.test');
+DotenvEditor::getValue('APP_NAME', 'Laravel');
+```
+
+The aliases are a migration aid — prefer the native names in new code.
 
 ---
 

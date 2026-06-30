@@ -1,6 +1,6 @@
 # CLI
 
-EnvKit ships 21 Artisan commands. Each has a fully-qualified
+EnvKit ships 23 Artisan commands. Each has a fully-qualified
 `laranail::env-kit-headless.<cmd>` name and a short `env:<cmd>` alias — use either.
 
 ## Commands
@@ -26,8 +26,10 @@ EnvKit ships 21 Artisan commands. Each has a fully-qualified
 | `…​.edit` | `env:edit` | Interactive TUI editor (see [TUI](tui.md)). |
 | `…​.doctor` | `env:doctor` | Run health-check rules (see [Doctor](doctor.md)). |
 | `…​.diff {against}` | `env:diff` | Compare against another file, by key. |
-| `…​.export` | `env:export` | Export as `--format=json\|csv` to stdout or `--output=`. |
-| `…​.import {source}` | `env:import` | Import from a json/csv file. |
+| `…​.export` | `env:export` | Export as `--format=json\|csv\|dotenv\|yaml` to stdout or `--output=`. |
+| `…​.import {source}` | `env:import` | Import from a json/csv/dotenv/yaml file. |
+| `…​.history` | `env:history` | Show recent audit history — who changed which keys, when (`--limit=20`). Values are never shown. |
+| `…​.docs` | `env:docs` | Render the resolved validation schema as a Markdown table (`--output=` to write a file). |
 
 ```bash
 php artisan env:set MAIL_HOST=smtp.acme.test
@@ -41,6 +43,8 @@ php artisan env:check                   # CI: exit 3 if .env drifts from .env.ex
 php artisan env:sync                    # add the missing example keys
 php artisan env:generate app_key --set=APP_KEY  # generate a secret and write it
 php artisan env:encrypt-value STRIPE_SECRET     # encrypt one value in place
+php artisan env:history --limit=50              # recent changes (keys + actor + time)
+php artisan env:docs --output=docs/env-schema.md  # render the schema as Markdown
 ```
 
 ## Per-value encryption vs. Laravel core

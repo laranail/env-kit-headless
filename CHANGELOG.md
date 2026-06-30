@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-29
+
+Completes the v1.0 feature surface — the last breadth items from the consolidation plan.
+
+### Added
+
+- **Import/export formats** — Porter now ships `dotenv` and `yaml` formats alongside json/csv
+  (`yaml` is registered only when `symfony/yaml` is installed — added to `suggest`).
+- **`env:history`** — a redacted audit-log viewer (`--limit`; shows who changed which keys, when —
+  never values), backed by a new `Audit\HistoryReader`.
+- **`env:docs`** — renders the resolved validation schema as a Markdown table (`--output`), via
+  `Support\DocsGenerator` + `EnvSchema::describe()`.
+- **Comment / blank-line authoring** — `EnvKit::addComment()` and `addEmptyLine()` (new
+  `EnvDocument::withComment()` / `withEmptyLine()` + `EditSession` methods).
+- **jackiedo/dotenv-editor compatibility** — drop-in aliases on EnvKit (`getValue`, `setKey`,
+  `setKeys`, `deleteKey`, `deleteKeys`, `keyExists`, `getKeys`, `getEntries`, `getContent`) and a
+  `Compat\DotenvEditor` facade that resolves the same bound instance, for one-line migration.
+- **Production banner** — every CLI command prints a one-line `PRODUCTION` warning when
+  `APP_ENV=production` (`Security\ProductionBanner`; the WebUI panel already shows its own).
+
+### Notes
+
+- All additions are backward-compatible; the `EnvKitFake` seam mirrors the new surface.
+
 ## [0.3.0] - 2026-06-29
 
 A feature-completeness release benchmarked against the full Laravel `.env`-editor ecosystem —

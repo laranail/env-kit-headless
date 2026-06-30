@@ -63,7 +63,9 @@ EnvKit::allowProduction()->set('MAINTENANCE', 'true');   // programmatic
 php artisan env:set MAINTENANCE=true --force-production   // CLI
 ```
 
-A production warning banner is shown in the TUI and web panel.
+A production warning banner is shown on every surface: each Artisan command
+prints a one-line `PRODUCTION …` warning when `APP_ENV=production` (even when the
+write is permitted), and the TUI and web panel show their own banner.
 
 ## `${VAR}` interpolation
 
