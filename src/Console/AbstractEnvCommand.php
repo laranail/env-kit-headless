@@ -13,6 +13,7 @@ use Simtabi\Laranail\EnvKit\Headless\Exceptions\EnvKitException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\FileNotWritableException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\IntegrityException;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\LockException;
+use Simtabi\Laranail\EnvKit\Headless\Security\ProductionBanner;
 
 /**
  * Base for the EnvKit Artisan commands. Provides the `laranail::env-kit-headless.*`
@@ -67,6 +68,10 @@ abstract class AbstractEnvCommand extends Command
      */
     protected function runSafely(Closure $action): int
     {
+        if ($this->laravel->environment('production')) {
+            $this->warn(ProductionBanner::line());
+        }
+
         try {
             return $action();
         } catch (ConflictException $e) {
