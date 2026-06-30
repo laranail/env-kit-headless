@@ -5,13 +5,56 @@ declare(strict_types=1);
 use Simtabi\Laranail\EnvKit\Headless\Audit\HistoryReader;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\EnvKitInterface;
 use Simtabi\Laranail\EnvKit\Headless\Document\EnvDocument;
+use Simtabi\Laranail\EnvKit\Headless\Exceptions\SchemaException;
 use Simtabi\Laranail\EnvKit\Headless\Facades\EnvKit;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Formats\DotenvFormat;
+use Simtabi\Laranail\EnvKit\Headless\Porter\Formats\YamlFormat;
+use Simtabi\Laranail\EnvKit\Headless\Rules\MatchesEnvSchema;
 use Simtabi\Laranail\EnvKit\Headless\Schema\EnvSchema;
 use Simtabi\Laranail\EnvKit\Headless\Support\DocsGenerator;
 use Simtabi\Laranail\EnvKit\Headless\Tests\TestCase;
 
 uses(TestCase::class);
+
+it('SchemaException::failed builds a message from the failures', function () {
+    $exception = SchemaException::failed(['PORT must be an integer', 'APP_ENV is required']);
+
+    expect($exception->getMessage())->toContain('Schema validation failed:')
+        ->toContain('PORT must be an integer')
+        ->toContain('APP_ENV is required')
+        ->and($exception->envKitReason())->toBe('invalid');
+});
+
+it('MatchesEnvSchema treats a non-string value as empty (type rules skip it)', function () {
+    $rule = new MatchesEnvSchema((new EnvSchema)->integer('PORT'), 'PORT');
+
+    $failures = [];
+    $rule->validate('port', 12345, function (string $m) use (&$failures): void {
+        $failures[] = $m;
+    });
+
+    expect($failures)->toBeEmpty(); // non-string → '' → the integer rule skips empties
+});
+
+it('YamlFormat stringifies scalar and array values on import', function () {
+    $out = (new YamlFormat)->import("A: 1\nB: true\nC:\n  - x\n  - y\n");
+
+    expect($out['A'])->toBe('1')             // int → string
+        ->and($out['B'])->toBe('1')           // bool true → '1'
+        ->and($out['C'])->toBe('["x","y"]');  // array → json
+});
+
+it('HistoryReader clamps a zero/negative limit to one', function () {
+    $file = sys_get_temp_dir().'/hrc-'.bin2hex(random_bytes(5)).'.log';
+    file_put_contents($file, implode("\n", [
+        '{"occurred_at":1,"changes":[]}',
+        '{"occurred_at":2,"changes":[]}',
+    ])."\n");
+
+    expect((new HistoryReader($file))->recent(0))->toHaveCount(1); // max(1, 0) === 1
+
+    @unlink($file);
+});
 
 it('EnvSchema::describe() lists the exact rule labels per key', function () {
     $schema = (new EnvSchema)
