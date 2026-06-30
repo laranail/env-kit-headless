@@ -17,52 +17,55 @@ final class EnvSchema
     /** @var array<string, list<Closure(?string): ?string>> */
     private array $rules = [];
 
+    /** @var array<string, list<string>> human-readable rule labels (for `env:docs`) */
+    private array $descriptions = [];
+
     public function required(string $key): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v === null || $v === '' ? 'is required' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v === null || $v === '' ? 'is required' : null, 'required');
     }
 
     public function string(string $key): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => null); // every value is a string at rest
+        return $this->rule($key, static fn (?string $v): ?string => null, 'string'); // every value is a string at rest
     }
 
     public function integer(string $key): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && preg_match('/^-?\d+$/', $v) !== 1 ? 'must be an integer' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && preg_match('/^-?\d+$/', $v) !== 1 ? 'must be an integer' : null, 'integer');
     }
 
     public function boolean(string $key): self
     {
         $valid = ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'];
 
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && ! in_array(strtolower($v), $valid, true) ? 'must be a boolean' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && ! in_array(strtolower($v), $valid, true) ? 'must be a boolean' : null, 'boolean');
     }
 
     public function number(string $key): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && ! is_numeric($v) ? 'must be a number' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && ! is_numeric($v) ? 'must be a number' : null, 'number');
     }
 
     /** @param list<string> $allowed */
     public function in(string $key, array $allowed): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && ! in_array($v, $allowed, true) ? 'must be one of: '.implode(', ', $allowed) : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && ! in_array($v, $allowed, true) ? 'must be one of: '.implode(', ', $allowed) : null, 'one of: '.implode(', ', $allowed));
     }
 
     public function regex(string $key, string $pattern): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && @preg_match($pattern, $v) !== 1 ? 'does not match the required format' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && @preg_match($pattern, $v) !== 1 ? 'does not match the required format' : null, 'matches '.$pattern);
     }
 
     public function url(string $key): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && filter_var($v, FILTER_VALIDATE_URL) === false ? 'must be a valid URL' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && filter_var($v, FILTER_VALIDATE_URL) === false ? 'must be a valid URL' : null, 'URL');
     }
 
     public function email(string $key): self
     {
-        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && filter_var($v, FILTER_VALIDATE_EMAIL) === false ? 'must be a valid email' : null);
+        return $this->rule($key, static fn (?string $v): ?string => $v !== null && $v !== '' && filter_var($v, FILTER_VALIDATE_EMAIL) === false ? 'must be a valid email' : null, 'email');
     }
 
     /** @param array<string, string> $values */
@@ -124,10 +127,21 @@ final class EnvSchema
         return array_keys($this->rules);
     }
 
+    /**
+     * Human-readable rule labels per key (for `env:docs` / DocsGenerator).
+     *
+     * @return array<string, list<string>>
+     */
+    public function describe(): array
+    {
+        return $this->descriptions;
+    }
+
     /** @param Closure(?string): ?string $validator */
-    private function rule(string $key, Closure $validator): self
+    private function rule(string $key, Closure $validator, string $label): self
     {
         $this->rules[$key][] = $validator;
+        $this->descriptions[$key][] = $label;
 
         return $this;
     }

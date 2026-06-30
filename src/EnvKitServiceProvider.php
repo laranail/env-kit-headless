@@ -190,6 +190,8 @@ final class EnvKitServiceProvider extends PackageServiceProvider
                 Console\SyncCommand::class,
                 Console\CheckCommand::class,
                 Console\GenerateCommand::class,
+                Console\HistoryCommand::class,
+                Console\DocsCommand::class,
                 Console\EncryptCommand::class,
                 Console\DecryptCommand::class,
                 Console\ExportCommand::class,
