@@ -7,7 +7,10 @@ namespace Simtabi\Laranail\EnvKit\Headless\Porter;
 use Simtabi\Laranail\EnvKit\Headless\Contracts\PortFormatInterface;
 use Simtabi\Laranail\EnvKit\Headless\Exceptions\PortException;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Formats\CsvFormat;
+use Simtabi\Laranail\EnvKit\Headless\Porter\Formats\DotenvFormat;
 use Simtabi\Laranail\EnvKit\Headless\Porter\Formats\JsonFormat;
+use Simtabi\Laranail\EnvKit\Headless\Porter\Formats\YamlFormat;
+use Symfony\Component\Yaml\Yaml;
 
 /** A registry of import/export formats, keyed by name. */
 final class Porter
@@ -33,12 +36,17 @@ final class Porter
         return array_keys($this->formats);
     }
 
-    /** The built-in formats (json, csv), plus any consumer-registered extras. */
+    /** The built-in formats (json, csv, dotenv; yaml when symfony/yaml is present), plus extras. */
     public static function withDefaults(PortFormatInterface ...$extra): self
     {
         $porter = (new self)
             ->register(new JsonFormat)
-            ->register(new CsvFormat);
+            ->register(new CsvFormat)
+            ->register(new DotenvFormat);
+
+        if (class_exists(Yaml::class)) {
+            $porter->register(new YamlFormat);
+        }
 
         foreach ($extra as $format) {
             $porter->register($format);
