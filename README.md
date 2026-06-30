@@ -31,7 +31,11 @@ makes those failure modes impossible by construction:
 - **Atomic & self-healing** — write to a temp file, `fsync`, rename; verify the result
   and **auto-rollback** on mismatch. Optimistic concurrency rejects clobbering writes.
 - **Secret-safe** — secret-shaped values are redacted from logs, exceptions, audit
-  records and events. Optional per-value **encryption-at-rest**.
+  records and events. Optional per-value **encryption-at-rest**, plus cryptographic
+  **secret generators** (`token`/`hex`/`base64`/`app_key`).
+- **Validated** — declare a [schema](docs/tools/schema.md) (config-seeded or fluent)
+  and gate CI/deploys on `EnvKit::assertValid()` or `env:validate`. Keep `.env` aligned
+  with its `.env.example` via `env:sync` / `env:check`.
 - **Guarded** — production-write protection and a layered protected/hidden/editable key
   policy on *every* surface (programmatic, CLI, TUI), plus a pluggable
   [authorization gate + write observers](docs/authorization.md).
@@ -65,7 +69,7 @@ EnvKit::transaction(fn ($s) => $s->set('A', '1')->set('B', '2')); // one commit
 $value = env_kit('APP_NAME', 'Laravel');
 ```
 
-**CLI** — 14 commands under `laranail::env-kit-headless.*`, each with a short `env:*` alias:
+**CLI** — 21 commands under `laranail::env-kit-headless.*`, each with a short `env:*` alias:
 
 ```bash
 php artisan env:set MAIL_HOST=smtp.acme.test
@@ -109,8 +113,9 @@ Full reference: **[docs/configuration.md](docs/configuration.md)**.
 | [Events](docs/events.md) | The lifecycle event table, actor attribution, listening |
 | [Notifications](docs/notifications.md) | Opt-in operator alerts, channels, testing |
 | [Release](docs/release.md) | Versioning, the release workflow, trusted publishing |
-| [Programmatic API](docs/tools/programmatic-api.md) | Reads, typed getters, the three write modes, `EnvKit::fake()` |
-| [CLI](docs/tools/cli.md) | All 14 commands, exit-code contract, `--file` / `--force-production` |
+| [Programmatic API](docs/tools/programmatic-api.md) | Reads, typed getters, the three write modes, schema, `.env.example` sync, secret generators, `EnvKit::fake()` |
+| [CLI](docs/tools/cli.md) | All 21 commands, exit-code contract, `--file` / `--force-production` |
+| [Schema](docs/tools/schema.md) | Declarative validation, the rule set, `MatchesEnvSchema` for FormRequests |
 | [TUI](docs/tools/tui.md) | The interactive `env:edit` editor |
 | [Encryption](docs/tools/encryption.md) | Per-value encryption-at-rest, cipher drivers |
 | [Doctor](docs/tools/doctor.md) | Health-check rules and writing your own |

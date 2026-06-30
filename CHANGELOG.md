@@ -7,12 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Tests
+## [0.3.0] - 2026-06-29
 
-- Expanded edge-case/regression coverage (notification mail rendering, atomic-writer +
-  integrity-verifier failure/rollback paths, cipher passthrough + corruption, the no-op
-  observer base, the base-exception reason, CLI empty/missing-file paths, and document-entry
-  edge cases — BOM detection, comment round-trip, `Setter::withValue`) — line coverage ~96%.
+A feature-completeness release benchmarked against the full Laravel `.env`-editor ecosystem —
+closing the remaining breadth gaps so EnvKit is a strict superset of every mined package.
+
+### Added
+
+- **Write-API completeness** — `update()` (existing-only, throws `KeyNotFoundException`),
+  `setOrUpdate()`, `setIfMissing()`, `forgetMany()`, `setExport()` (explicit `export ` toggle, via
+  new `EnvDocument::withExport()` / `EditSession::setExport()`), and `entry()` (single-key setter).
+- **Schema validation** — a fluent `EnvKit::schema()` builder (`required/string/integer/boolean/
+  number/in/regex/url/email` + `define()` for `'required|integer|in:a,b'` specs), `validate()` →
+  `ValidationResult`, `isValid()`, `assertValid()` (throws `SchemaException`), a `MatchesEnvSchema`
+  validation rule for FormRequests, and a config-seeded `env-kit.schema` (runtime rules merge in).
+  `env:validate` now checks the schema in addition to well-formedness.
+- **`.env.example` sync** — `missingFromExample()` / `syncFromExample()` / `examplePath()` and the
+  `env:sync` + `env:check` commands (`env:check` exits non-zero on drift — CI-friendly).
+- **Secret generators** — `EnvKit::generate()` (token/hex/base64/app_key) + the `env:generate`
+  command (`--bytes`, `--set`).
+- **Named backups + lifecycle** — `EnvKit::backup(?string $name)`, `backups()->delete()`,
+  `backups()->deleteOlderThan()`, and the `env:backup-delete` command.
+- **Per-value encryption CLI** — `env:encrypt-value` / `env:decrypt-value` (deliberately NOT
+  aliased to Laravel's whole-file core `env:encrypt`/`env:decrypt`, which EnvKit never shadows).
+
+### Notes
+
+- All additions are backward-compatible. The `EnvKitFake` test seam mirrors the new surface.
 
 ## [0.2.1] - 2026-06-29
 

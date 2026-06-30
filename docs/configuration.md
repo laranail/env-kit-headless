@@ -22,6 +22,7 @@ need to publish and edit the file to change behaviour.
 | `audit.actor` | `null` | Static actor override for the audit trail + events; `null` resolves the authenticated user (else a console/system identity). See [Events](events.md#who-is-the-actor). |
 | `limits.max_value_length` | `32768` | Reject any written value over N bytes (`null` = unbounded). Defends against accidental/abusive huge writes. |
 | `limits.max_key_length` | `256` | Reserved bound on key length. |
+| `schema` | `[]` | Baseline validation schema as `key => rule-spec` (Laravel-style, e.g. `'APP_ENV' => 'required\|in:local,production'`). Seeds `env:validate` + `EnvKit::validate()`; runtime `EnvKit::schema()->…` rules merge on top. See [Schema](tools/schema.md). |
 | `notifications.*` | _disabled_ | Opt-in operator alerts from lifecycle events — see [Notifications](notifications.md) for the full block. |
 | `encryption.driver` | `'laravel'` | The cipher driver for per-value encryption-at-rest. |
 
